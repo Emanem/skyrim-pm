@@ -90,6 +90,36 @@ public:
 			return rv;
 		}
 
+		size_t extract_dir(const std::string& base_match, const std::string& base_outdir) {
+			size_t	rv = 0;
+			struct archive_entry	*entry = 0;
+			while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
+				const std::string	p_name(archive_entry_pathname(entry));
+				std::string		rhs;
+				size_t			pos = std::string::npos;
+				if((pos = p_name.find(base_match)) != std::string::npos) {
+					// get the right hand side of the string
+					const std::string	rhs = p_name.substr(pos + base_match.length());
+					if(rhs.empty() || (*rhs.rbegin() == '/'))
+						continue;
+					++rv;
+					std::cout << "copying " << p_name << " --> " << base_outdir << std::endl;
+					/*const static size_t	buflen = 2048;
+					char			buf[buflen];
+					la_ssize_t		rd = 0;
+					while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
+						if(0 == rd)
+							break;
+						if(rd > 0) data_out.write(&buf[0], rd);
+					}
+					if(rd < 0)
+						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
+					break;*/
+				}
+			}
+			return rv;
+		}
+
 		~ar() {
 			archive_read_free(a_);
 		}
@@ -181,7 +211,22 @@ private:
 			const auto res = prompt_choice(ostr, istr, "Install required files (y/n)?", "ynYN");
 			if(!is_yY(res))
 				return false;
-
+			// now cycle through all requirements
+			for (auto cur_node = n_requiredInstallFiles_->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("folder") != (const char*)cur_node->name)
+					continue;
+				// get required attribs
+				const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
+							x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
+				if(!x_src || !x_dst)
+					throw std::runtime_error("Invalid ModuleConfig required install section, 'source' or 'destination' missing");
+				const std::string	src((const char*)x_src),
+							dst((const char*)x_dst);
+				// now invoke the dir copy
+				a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
+			}
 			return true;
 		}
 public:
@@ -226,7 +271,7 @@ int main(int argc, char *argv[]) {
 		// parse the XML
 		ModCfgParser		mcp(sstr.str());
 		// execute it
-		mcp.execute(std::cout, std::cin, a, {"./output"});
+		mcp.execute(std::cout, std::cin, a, {"./output/"});
 		//mcp.print_tree(std::cout);
 
 		// cleanup the xml2 library structures
