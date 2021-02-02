@@ -25,8 +25,21 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include <sys/stat.h>
 
 namespace {
+	// ensure path exists for a given filename
+	// also, this has to be a filename
+	void ensure_fname_path(const std::string& tgt_filename) {
+		auto p_next = tgt_filename.find('/');
+		while(p_next != std::string::npos) {
+			const std::string cur_path = tgt_filename.substr(0, p_next);
+			if(mkdir(cur_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0 && errno != EEXIST)
+				throw std::runtime_error("Can't create destination path");
+			p_next = tgt_filename.find('/', p_next+1);
+		}
+	}
+
 	class ar {
 		const std::string	fname_;
 		struct archive		*a_;
@@ -125,22 +138,29 @@ public:
 				size_t			pos = std::string::npos;
 				if((pos = p_name.find(base_match)) != std::string::npos) {
 					// get the right hand side of the string
+					// TODO rhs should be made lowercase according to
+					// Skyrim SE specs...
 					const std::string	rhs = p_name.substr(pos + base_match.length());
 					if(rhs.empty() || (*rhs.rbegin() == '/'))
 						continue;
 					++rv;
 					std::cout << "copying " << p_name << " --> " << base_outdir << std::endl;
-					/*const static size_t	buflen = 2048;
+					// outdir should terminate with '/'
+					// and if rhs starts with '/' we shouldn't
+					// include it of course
+					const std::string	tgt_filename = base_outdir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs);
+					ensure_fname_path(tgt_filename);
+					std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
+					const static size_t	buflen = 2048;
 					char			buf[buflen];
 					la_ssize_t		rd = 0;
 					while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
 						if(0 == rd)
 							break;
-						if(rd > 0) data_out.write(&buf[0], rd);
+						if(rd > 0) of.write(&buf[0], rd);
 					}
 					if(rd < 0)
-						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
-					break;*/
+						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
 				}
 			}
 			return rv;
@@ -232,17 +252,20 @@ private:
 			for (auto cur_node = n_requiredInstallFiles_->children; cur_node; cur_node = cur_node->next) {
 				if(cur_node->type != XML_ELEMENT_NODE)
 					continue;
-				if(std::string("folder") != (const char*)cur_node->name)
-					continue;
-				// get required attribs
-				const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
-							x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
-				if(!x_src || !x_dst)
-					throw std::runtime_error("Invalid ModuleConfig required install section, 'source' or 'destination' missing");
-				const std::string	src((const char*)x_src),
-							dst((const char*)x_dst);
-				// now invoke the dir copy
-				a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
+				if(std::string("folder") == (const char*)cur_node->name) {
+					// get required attribs
+					const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
+								x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
+					if(!x_src || !x_dst)
+						throw std::runtime_error("Invalid ModuleConfig required install section, 'source' or 'destination' missing");
+					const std::string	src((const char*)x_src);
+					std::string		dst((const char*)x_dst);
+					if(!dst.empty() && *dst.rbegin() != '/') {
+						dst += '/';
+					}
+					// now invoke the dir extraction/copy
+					a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
+				}
 			}
 			return true;
 		}
