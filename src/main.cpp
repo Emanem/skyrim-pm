@@ -56,7 +56,7 @@ public:
 			reset_archive();
 		}
 
-		std::vector<std::string> get_content(void) {
+		std::vector<std::string> list_content(void) {
 			std::vector<std::string>	out;
 			struct archive_entry	*entry = 0;
 			while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
@@ -82,6 +82,32 @@ public:
 					}
 					if(rd < 0)
 						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
+					break;
+				}
+			}
+			// reset the archive handle
+			reset_archive();
+			return rv;
+		}
+
+		bool extract_modcfg(std::ostream& data_out, const std::string& f_ModuleConfig = "ModuleConfig.xml") {
+			bool			rv = false;
+			const std::regex 	self_regex(f_ModuleConfig + "$" , std::regex_constants::ECMAScript | std::regex_constants::icase);
+			struct archive_entry	*entry = 0;
+			while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
+				const std::string	p_name = archive_entry_pathname(entry);
+				if(std::regex_search(p_name, self_regex)) {
+					rv = true;
+					const static size_t	buflen = 2048;
+					char			buf[buflen];
+					la_ssize_t		rd = 0;
+					while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
+						if(0 == rd)
+							break;
+						if(rd > 0) data_out.write(&buf[0], rd);
+					}
+					if(rd < 0)
+						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + f_ModuleConfig + "' from archive").c_str());
 					break;
 				}
 			}
@@ -124,15 +150,6 @@ public:
 			archive_read_free(a_);
 		}
 	};
-
-	const std::string& find_ModuleConfig(const std::vector<std::string>& v, const std::string& f_ModuleConfig = "ModuleConfig.xml") {
-		const std::regex self_regex(std::string("/") + f_ModuleConfig + "$" , std::regex_constants::ECMAScript | std::regex_constants::icase);
-		for(const auto& i : v) {
-			if(std::regex_search(i, self_regex))
-			       return i;	
-		}
-		throw std::runtime_error("Can't find ModuleConfig.xml");
-	}
 
 	class ModCfgParser {
 public:
@@ -260,23 +277,19 @@ int main(int argc, char *argv[]) {
 		if(argc < 1)
 			throw std::runtime_error("Need to provide a FOMOD compatible archive name");
 
+		// open archive
 		ar			a(argv[1]);
-		// get list of files/directories
-		const auto		cnt = a.get_content();
 		// get and load the ModuleConfig.xml file
-		const auto&		modcfg = find_ModuleConfig(cnt);
 		std::stringstream	sstr;
-		if(!a.extract_file(modcfg, sstr))
-			throw std::runtime_error("Can't extract ModuleConfig from archive");
+		if(!a.extract_modcfg(sstr))
+			throw std::runtime_error("Can't find/extract ModuleConfig.xml from archive");
 		// parse the XML
 		ModCfgParser		mcp(sstr.str());
 		// execute it
 		mcp.execute(std::cout, std::cin, a, {"./output/"});
-		//mcp.print_tree(std::cout);
 
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
-
 	} catch(const std::exception& e) {
 		std::cerr << "Exception: " << e.what() << std::endl;
 	} catch(...) {
