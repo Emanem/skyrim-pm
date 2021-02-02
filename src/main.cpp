@@ -105,6 +105,11 @@ public:
 	}
 
 	class ModCfgParser {
+public:
+		struct execute_info {
+			std::string	skyrim_data_dir;
+		};
+private:
 		const std::string	s_;
 		xmlDocPtr		doc_;
 		xmlNode			*n_moduleName_,
@@ -145,8 +150,39 @@ public:
 				throw std::runtime_error("ModuleConfig is missing 'moduleName' and/or 'installSteps'");
 		}
 
+		std::string prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& a, const bool f_empty = false) {
+			while(true) {
+				ostr << q << " : ";
+				std::string c;
+				std::getline(istr, c);
+				if((c.length() > 1) || (std::string::npos == a.find(c[0]))) {
+					ostr << "Invalid answer" << std::endl;
+					continue;
+				}
+				if(c.empty() && !f_empty) {
+					ostr << "Invalid answer" << std::endl;
+					continue;
+				}
+				return c;
+			}
+		}
+
+		bool is_yY(const std::string& in) {
+			return in[0] == 'Y' || in[0] == 'y';
+		}
+
 		void display_name(std::ostream& ostr) {
 			ostr << "Module: " << xmlNodeGetContent(n_moduleName_) << std::endl;
+		}
+
+		bool required(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			if(!n_requiredInstallFiles_)
+				return true;
+			const auto res = prompt_choice(ostr, istr, "Install required files (y/n)?", "ynYN");
+			if(!is_yY(res))
+				return false;
+
+			return true;
 		}
 public:
 		ModCfgParser(const std::string& s) : s_(s), doc_(0), n_moduleName_(0), n_installSteps_(0), n_requiredInstallFiles_(0) {
@@ -160,9 +196,11 @@ public:
     			print_element_names(ostr, root_element);
 		}
 
-		void execute(std::ostream& ostr, std::istream& istr) {
+		void execute(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
 			init();
 			display_name(ostr);
+			if(!required(ostr, istr, a, ei))
+				throw std::runtime_error("Required files present but skipped - aborting install");
 		}
 
 		~ModCfgParser() {
@@ -188,7 +226,7 @@ int main(int argc, char *argv[]) {
 		// parse the XML
 		ModCfgParser		mcp(sstr.str());
 		// execute it
-		mcp.execute(std::cout, std::cin);
+		mcp.execute(std::cout, std::cin, a, {"./output"});
 		//mcp.print_tree(std::cout);
 
 		// cleanup the xml2 library structures
