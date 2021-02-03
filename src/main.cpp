@@ -40,6 +40,27 @@ namespace {
 		}
 	}
 
+	std::string prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& a, const bool f_empty = false) {
+		while(true) {
+			ostr << q << " : ";
+			std::string c;
+			std::getline(istr, c);
+			if((c.length() > 1) || (std::string::npos == a.find(c[0]))) {
+				ostr << "Invalid answer" << std::endl;
+				continue;
+			}
+			if(c.empty() && !f_empty) {
+				ostr << "Invalid answer" << std::endl;
+				continue;
+			}
+			return c;
+		}
+	}
+
+	bool is_yY(const std::string& in) {
+		return in[0] == 'Y' || in[0] == 'y';
+	}
+
 	class ar {
 		const std::string	fname_;
 		struct archive		*a_;
@@ -220,27 +241,6 @@ private:
 				throw std::runtime_error("ModuleConfig is missing 'moduleName' and/or 'installSteps'");
 		}
 
-		std::string prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& a, const bool f_empty = false) {
-			while(true) {
-				ostr << q << " : ";
-				std::string c;
-				std::getline(istr, c);
-				if((c.length() > 1) || (std::string::npos == a.find(c[0]))) {
-					ostr << "Invalid answer" << std::endl;
-					continue;
-				}
-				if(c.empty() && !f_empty) {
-					ostr << "Invalid answer" << std::endl;
-					continue;
-				}
-				return c;
-			}
-		}
-
-		bool is_yY(const std::string& in) {
-			return in[0] == 'Y' || in[0] == 'y';
-		}
-
 		void display_name(std::ostream& ostr) {
 			ostr << "Module: " << xmlNodeGetContent(n_moduleName_) << std::endl;
 		}
@@ -248,7 +248,7 @@ private:
 		bool required(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
 			if(!n_requiredInstallFiles_)
 				return true;
-			const auto res = prompt_choice(ostr, istr, "Install required files (y/n)?", "ynYN");
+			const auto res = prompt_choice(ostr, istr, "Required files - Install? (y/n)", "ynYN");
 			if(!is_yY(res))
 				return false;
 			// now cycle through all requirements
@@ -284,6 +284,97 @@ private:
 			}
 			return true;
 		}
+
+		struct plugin_desc {
+			xmlNode*	node;
+			std::string	name;
+		};
+
+		std::vector<plugin_desc> get_plugin_options(xmlNode* plugins_node) {
+			// scan through all plugins and prepare name/description
+			std::vector<plugin_desc>	pd;
+			for (auto cur_node = plugins_node->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("plugin") != (const char*)cur_node->name)
+					continue;
+				const auto		x_name = xmlGetProp(cur_node, (const xmlChar*)"name");
+				if(!x_name)
+					throw std::runtime_error("Invalid plugin, 'name' attribute missing");
+				const std::string	name((const char*)x_name);
+				pd.emplace_back(plugin_desc{cur_node, name});
+			}
+			return pd;
+		}
+
+		void group_SelectExactlyOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			auto	pd = get_plugin_options(plugins_node);
+			int	i = 0;
+			for(const auto& el : pd) {
+				ostr << "\t\t" << i << '\t' << el.name << std::endl;
+				++i;
+			}
+
+		}
+
+		void group_SelectAtMostOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+		}
+
+		void group_SelectAny(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+		}
+
+		void group(xmlNode* group_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			const auto		x_name = xmlGetProp(group_node, (const xmlChar*)"name"),
+						x_type = xmlGetProp(group_node, (const xmlChar*)"type");
+			if(!x_type)
+				throw std::runtime_error("Invalid group, 'type' attribute missing");
+			const std::string	name((x_name) ? (const char*)x_name : "<no name>"),
+						type((const char*)x_type);
+			ostr << "\t" << name << " [" << type << "]" << std::endl;
+			for (auto cur_node = group_node->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("plugins") != (const char*)cur_node->name)
+					continue;
+				if(type == "SelectExactlyOne") {
+					group_SelectExactlyOne(cur_node, ostr, istr, a, ei);
+				} else if(type == "SelectAtMostOne") {
+					group_SelectAtMostOne(cur_node, ostr, istr, a, ei);
+				} else if(type == "SelectAny") {
+					group_SelectAny(cur_node, ostr, istr, a, ei);
+				}
+			}
+		}
+
+		void steps(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			int  i = 0;
+			for (auto cur_node = n_installSteps_->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("installStep") != (const char*)cur_node->name)
+					continue;
+				++i;
+				const auto		x_name = xmlGetProp(cur_node, (const xmlChar*)"name");
+				const std::string	name((x_name) ? (const char*)x_name : "<no name>");
+				//
+				ostr << "Install step " << i << ": " << name << std::endl;
+				// get 'optionalFileGroups' tokens...
+				for(auto ofg_node = cur_node->children; ofg_node; ofg_node = ofg_node->next) {
+					if(ofg_node->type != XML_ELEMENT_NODE)
+						continue;
+					if(std::string("optionalFileGroups") != (const char*)ofg_node->name)
+						continue;
+					// get 'group'
+					for(auto group_node = ofg_node->children; group_node; group_node = group_node->next) {
+						if(group_node->type != XML_ELEMENT_NODE)
+							continue;
+						if(std::string("group") != (const char*)group_node->name)
+							continue;
+						group(group_node, ostr, istr, a, ei);
+					}
+				}
+			}
+		}
 public:
 		ModCfgParser(const std::string& s) : s_(s), doc_(0), n_moduleName_(0), n_installSteps_(0), n_requiredInstallFiles_(0) {
 			doc_ = xmlReadMemory(s_.c_str(), s_.length(), "noname.xml", NULL, 0);
@@ -299,8 +390,9 @@ public:
 		void execute(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
 			init();
 			display_name(ostr);
-			if(!required(ostr, istr, a, ei))
-				throw std::runtime_error("Required files present but skipped - aborting install");
+			if(!required(ostr, istr, a, ei));
+				//throw std::runtime_error("Required files present but skipped - aborting install");
+			steps(ostr, istr, a, ei);
 		}
 
 		~ModCfgParser() {
