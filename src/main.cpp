@@ -79,30 +79,6 @@ public:
 			return out;
 		}
 
-		bool extract_file(const std::string& fname, std::ostream& data_out) {
-			bool			rv = false;
-			struct archive_entry	*entry = 0;
-			while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
-				if(fname == archive_entry_pathname(entry)) {
-					rv = true;
-					const static size_t	buflen = 2048;
-					char			buf[buflen];
-					la_ssize_t		rd = 0;
-					while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
-						if(0 == rd)
-							break;
-						if(rd > 0) data_out.write(&buf[0], rd);
-					}
-					if(rd < 0)
-						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
-					break;
-				}
-			}
-			// reset the archive handle
-			reset_archive();
-			return rv;
-		}
-
 		bool extract_modcfg(std::ostream& data_out, const std::string& f_ModuleConfig = "ModuleConfig.xml") {
 			bool			rv = false;
 			const std::regex 	self_regex(f_ModuleConfig + "$" , std::regex_constants::ECMAScript | std::regex_constants::icase);
@@ -129,6 +105,34 @@ public:
 			return rv;
 		}
 
+		bool extract_file(const std::string& fname, const std::string& base_outdir) {
+			bool			rv = false;
+			struct archive_entry	*entry = 0;
+			while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
+				if(fname == archive_entry_pathname(entry)) {
+					rv = true;
+					// TODO we may need to lowercase fname
+					const std::string	tgt_filename = base_outdir + fname;
+					ensure_fname_path(tgt_filename);
+					std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
+					const static size_t	buflen = 2048;
+					char			buf[buflen];
+					la_ssize_t		rd = 0;
+					while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
+						if(0 == rd)
+							break;
+						if(rd > 0) of.write(&buf[0], rd);
+					}
+					if(rd < 0)
+						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
+					break;
+				}
+			}
+			// reset the archive handle
+			reset_archive();
+			return rv;
+		}
+
 		size_t extract_dir(const std::string& base_match, const std::string& base_outdir) {
 			size_t	rv = 0;
 			struct archive_entry	*entry = 0;
@@ -144,7 +148,6 @@ public:
 					if(rhs.empty() || (*rhs.rbegin() == '/'))
 						continue;
 					++rv;
-					std::cout << "copying " << p_name << " --> " << base_outdir << std::endl;
 					// outdir should terminate with '/'
 					// and if rhs starts with '/' we shouldn't
 					// include it of course
@@ -256,15 +259,27 @@ private:
 					// get required attribs
 					const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
 								x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
-					if(!x_src || !x_dst)
-						throw std::runtime_error("Invalid ModuleConfig required install section, 'source' or 'destination' missing");
+					if(!x_src)
+						throw std::runtime_error("Invalid ModuleConfig required install section, 'source' missing");
 					const std::string	src((const char*)x_src);
-					std::string		dst((const char*)x_dst);
+					std::string		dst((x_dst) ? (const char*)x_dst : "");
 					if(!dst.empty() && *dst.rbegin() != '/') {
 						dst += '/';
 					}
 					// now invoke the dir extraction/copy
 					a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
+				} else if(std::string("file") == (const char*)cur_node->name) {
+					const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
+								x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
+					if(!x_src)
+						throw std::runtime_error("Invalid ModuleConfig required install section, 'source' missing");
+					const std::string	src((const char*)x_src);
+					std::string		dst((x_dst) ? (const char*)x_dst : "");
+					if(!dst.empty() && *dst.rbegin() != '/') {
+						dst += '/';
+					}
+					// now invoke the file extraction/copy
+					a.extract_file(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
 				}
 			}
 			return true;
@@ -308,6 +323,7 @@ int main(int argc, char *argv[]) {
 			throw std::runtime_error("Can't find/extract ModuleConfig.xml from archive");
 		// parse the XML
 		ModCfgParser		mcp(sstr.str());
+		mcp.print_tree(std::cout);
 		// execute it
 		mcp.execute(std::cout, std::cin, a, {"./output/"});
 
