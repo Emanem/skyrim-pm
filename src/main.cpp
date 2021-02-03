@@ -26,6 +26,7 @@
 #include <regex>
 #include <sstream>
 #include <sys/stat.h>
+#include <unordered_map>
 
 namespace {
 	// ensure path exists for a given filename
@@ -289,6 +290,35 @@ public:
 		}
 	};
 
+	// utlity class to manage RAII for
+	// memory allocated objects from
+	// libxml2
+	class xc {
+		xmlChar* p_;
+public:
+		xc(xmlChar* p) : p_(p) {
+		}
+
+		xc(const xc&) = delete;
+		xc& operator=(const xc&) = delete;
+
+		operator bool() const {
+			return p_ != 0;
+		}
+
+		operator const char*() const {
+			return (const char*)p_;
+		}
+
+		const char* c_str(void) const {
+			return (const char*)p_;
+		}
+
+		~xc() {
+			xmlFree(p_);
+		}
+	};
+
 	class ModCfgParser {
 public:
 		struct execute_info {
@@ -301,6 +331,8 @@ private:
 					*n_installSteps_,
 					*n_requiredInstallFiles_;
 
+		std::unordered_map<std::string, std::string>	flags_;
+
 		void print_element_names(std::ostream& ostr, xmlNode * a_node, const int level = 0) {
 			xmlNode *cur_node = NULL;
 			
@@ -310,7 +342,7 @@ private:
 						ostr << '\t';
 					ostr << cur_node->name << " ";
 					for(xmlAttrPtr attr = cur_node->properties; NULL != attr; attr = attr->next) {
-						ostr << "[" << attr->name << "]{" << xmlGetProp(cur_node, attr->name) << "} ";
+						ostr << "[" << attr->name << "]{" << xc(xmlGetProp(cur_node, attr->name)).c_str() << "} ";
 					}
 					ostr << std::endl;
 				}
@@ -336,25 +368,20 @@ private:
 		}
 
 		void display_name(std::ostream& ostr) {
-			ostr << "Module: " << xmlNodeGetContent(n_moduleName_) << std::endl;
+			ostr << "Module: " << xc(xmlNodeGetContent(n_moduleName_)).c_str() << std::endl;
 		}
 
-		bool required(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
-			if(!n_requiredInstallFiles_)
-				return true;
-			const auto res = prompt_choice(ostr, istr, "Required files - Install?", "y,n,Y,N");
-			if(!is_yY(res[0]))
-				return false;
+		void copy_op_node(xmlNode* node, ar& a, const execute_info& ei) {
 			// now cycle through all requirements
-			for (auto cur_node = n_requiredInstallFiles_->children; cur_node; cur_node = cur_node->next) {
+			for (auto cur_node = node; cur_node; cur_node = cur_node->next) {
 				if(cur_node->type != XML_ELEMENT_NODE)
 					continue;
 				if(std::string("folder") == (const char*)cur_node->name) {
 					// get required attribs
-					const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
-								x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
+					const xc		x_src(xmlGetProp(cur_node, (const xmlChar*)"source")),
+								x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));
 					if(!x_src)
-						throw std::runtime_error("Invalid ModuleConfig required install section, 'source' missing");
+						throw std::runtime_error("Invalid ModuleConfig section, 'source' missing");
 					const std::string	src((const char*)x_src);
 					std::string		dst((x_dst) ? (const char*)x_dst : "");
 					if(!dst.empty() && *dst.rbegin() != '/') {
@@ -363,10 +390,10 @@ private:
 					// now invoke the dir extraction/copy
 					a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
 				} else if(std::string("file") == (const char*)cur_node->name) {
-					const auto		x_src = xmlGetProp(cur_node, (const xmlChar*)"source"),
-								x_dst = xmlGetProp(cur_node, (const xmlChar*)"destination");
+					const xc		x_src(xmlGetProp(cur_node, (const xmlChar*)"source")),
+								x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));
 					if(!x_src)
-						throw std::runtime_error("Invalid ModuleConfig required install section, 'source' missing");
+						throw std::runtime_error("Invalid ModuleConfig section, 'source' missing");
 					const std::string	src((const char*)x_src);
 					std::string		dst((x_dst) ? (const char*)x_dst : "");
 					if(!dst.empty() && *dst.rbegin() != '/') {
@@ -376,6 +403,16 @@ private:
 					a.extract_file(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
 				}
 			}
+		}
+
+		bool required(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			if(!n_requiredInstallFiles_)
+				return true;
+			const auto res = prompt_choice(ostr, istr, "Required files - Install?", "y,n,Y,N");
+			if(!is_yY(res[0]))
+				return false;
+			// now cycle through all copy requirements
+			copy_op_node(n_requiredInstallFiles_->children, a, ei);
 			return true;
 		}
 
@@ -394,7 +431,7 @@ private:
 					continue;
 				if(std::string("plugin") != (const char*)cur_node->name)
 					continue;
-				const auto		x_name = xmlGetProp(cur_node, (const xmlChar*)"name");
+				const xc		x_name(xmlGetProp(cur_node, (const xmlChar*)"name"));
 				if(!x_name)
 					throw std::runtime_error("Invalid plugin, 'name' attribute missing");
 				const std::string	name((const char*)x_name);
@@ -406,6 +443,31 @@ private:
 			}
 			csv_answers = answ.str();
 			return pd;
+		}
+
+		void plugin(xmlNode* plugin_node, ar& a, const execute_info& ei) {
+			for (auto cur_node = plugin_node->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				// if we're files section, do copy
+				if(std::string("files") == (const char*)cur_node->name) {
+					copy_op_node(cur_node->children, a, ei);
+				} else if (std::string("conditionFlags") == (const char*)cur_node->name) {
+					for (auto f_node = cur_node->children; f_node; f_node = f_node->next) {
+						if(f_node->type != XML_ELEMENT_NODE)
+							continue;
+						if(std::string("flag") != (const char*)f_node->name)
+							continue;
+						// we must have name... and possibly the value
+						const xc		x_name(xmlGetProp(f_node, (const xmlChar*)"name"));
+						if(!x_name)
+							throw std::runtime_error("Invalid plugin, flag 'name' attribute missing");
+						const std::string	name((const char*)x_name);
+						xc 			value(xmlNodeGetContent(f_node));
+						flags_[name] = std::string((const char*)value);
+					}
+				}
+			}
 		}
 
 		void group_SelectExactlyOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
@@ -427,8 +489,8 @@ private:
 		}
 
 		void group(xmlNode* group_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
-			const auto		x_name = xmlGetProp(group_node, (const xmlChar*)"name"),
-						x_type = xmlGetProp(group_node, (const xmlChar*)"type");
+			const xc		x_name(xmlGetProp(group_node, (const xmlChar*)"name")),
+						x_type(xmlGetProp(group_node, (const xmlChar*)"type"));
 			if(!x_type)
 				throw std::runtime_error("Invalid group, 'type' attribute missing");
 			const std::string	name((x_name) ? (const char*)x_name : "<no name>"),
@@ -450,6 +512,8 @@ private:
 		}
 
 		void steps(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			// reset flags at this stage
+			flags_.clear();
 			int  i = 0;
 			for (auto cur_node = n_installSteps_->children; cur_node; cur_node = cur_node->next) {
 				if(cur_node->type != XML_ELEMENT_NODE)
@@ -457,7 +521,7 @@ private:
 				if(std::string("installStep") != (const char*)cur_node->name)
 					continue;
 				++i;
-				const auto		x_name = xmlGetProp(cur_node, (const xmlChar*)"name");
+				const xc		x_name(xmlGetProp(cur_node, (const xmlChar*)"name"));
 				const std::string	name((x_name) ? (const char*)x_name : "<no name>");
 				//
 				ostr << "Install step " << i << ": " << name << std::endl;
