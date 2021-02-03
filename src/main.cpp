@@ -53,6 +53,16 @@ namespace {
 		return str;
 	}
 
+	void path2unix(std::string& in) {
+		for(auto& i : in)
+			if(i == '\\') i = '/';
+	}
+
+	void to_lower(std::string& in) {
+		for(auto& i : in)
+			i = std::tolower(i);
+	}
+
 	enum prompt_choice_mode {
 		ONE_ONLY = 1,
 		ONE_OR_NONE,
@@ -470,22 +480,34 @@ private:
 			}
 		}
 
-		void group_SelectExactlyOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+		void group_SelectX(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei, const prompt_choice_mode pcm) {
 			std::string	answ;
 			auto		pd = get_plugin_options_display(plugins_node, ostr, answ);
-			const auto	rv = prompt_choice(ostr, istr, "\tSelect one", answ, prompt_choice_mode::ONE_ONLY);
-		}
-
-		void group_SelectAtMostOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
-			std::string	answ;
-			auto		pd = get_plugin_options_display(plugins_node, ostr, answ);
-			const auto	rv = prompt_choice(ostr, istr, "\tSelect one or none", answ, prompt_choice_mode::ONE_OR_NONE);
-		}
-
-		void group_SelectAny(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
-			std::string	answ;
-			auto		pd = get_plugin_options_display(plugins_node, ostr, answ);
-			const auto	rv = prompt_choice(ostr, istr, "\tSelect none or any", answ, prompt_choice_mode::ANY);
+			const char	*desc = "none";
+			switch(pcm) {
+				case prompt_choice_mode::ONE_ONLY:
+				desc = "\tSelect one";
+				break;
+				case prompt_choice_mode::ONE_OR_NONE:
+				desc = "\tSelect one or none";
+				break;
+				case prompt_choice_mode::ANY:
+				desc = "\tSelect none or any";
+				break;
+				case prompt_choice_mode::AT_LEAST_ONE:
+				desc = "\tSelect one or more";
+				break;
+			}
+			const auto	rv = prompt_choice(ostr, istr, desc, answ, pcm);
+			for(const auto& i : rv) {
+				const int	idx = std::atoi(i.c_str());
+				if(idx < 0)
+					continue;
+				// this should never happen
+				if(idx >= (int)pd.size())
+					continue;
+				plugin(pd[idx].node, a, ei);
+			}
 		}
 
 		void group(xmlNode* group_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
@@ -502,11 +524,11 @@ private:
 				if(std::string("plugins") != (const char*)cur_node->name)
 					continue;
 				if(type == "SelectExactlyOne") {
-					group_SelectExactlyOne(cur_node, ostr, istr, a, ei);
+					group_SelectX(cur_node, ostr, istr, a, ei, prompt_choice_mode::ONE_ONLY);
 				} else if(type == "SelectAtMostOne") {
-					group_SelectAtMostOne(cur_node, ostr, istr, a, ei);
+					group_SelectX(cur_node, ostr, istr, a, ei, prompt_choice_mode::ONE_OR_NONE);
 				} else if(type == "SelectAny") {
-					group_SelectAny(cur_node, ostr, istr, a, ei);
+					group_SelectX(cur_node, ostr, istr, a, ei, prompt_choice_mode::ANY);
 				}
 			}
 		}
