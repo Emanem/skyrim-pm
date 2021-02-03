@@ -294,6 +294,8 @@ public:
 						throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
 				}
 			}
+			// reset the archive handle
+			reset_archive();
 			return rv;
 		}
 
@@ -531,6 +533,8 @@ private:
 					group_SelectX(cur_node, ostr, istr, a, ei, prompt_choice_mode::ONE_OR_NONE);
 				} else if(type == "SelectAny") {
 					group_SelectX(cur_node, ostr, istr, a, ei, prompt_choice_mode::ANY);
+				} else if(type == "SelectAtLeastOne") {
+					group_SelectX(cur_node, ostr, istr, a, ei, prompt_choice_mode::AT_LEAST_ONE);
 				}
 			}
 		}
