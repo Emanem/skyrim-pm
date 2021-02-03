@@ -53,14 +53,18 @@ namespace {
 		return str;
 	}
 
-	void path2unix(std::string& in) {
-		for(auto& i : in)
+	std::string path2unix(const std::string& in) {
+		std::string out(in);
+		for(auto& i : out)
 			if(i == '\\') i = '/';
+		return out;
 	}
 
-	void to_lower(std::string& in) {
-		for(auto& i : in)
+	std::string to_lower(const std::string& in) {
+		std::string out(in);
+		for(auto& i : out)
 			i = std::tolower(i);
+		return out;
 	}
 
 	enum prompt_choice_mode {
@@ -237,7 +241,6 @@ public:
 			while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
 				if(fname == archive_entry_pathname(entry)) {
 					rv = true;
-					// TODO we may need to lowercase fname
 					const std::string	tgt_filename = base_outdir + fname;
 					ensure_fname_path(tgt_filename);
 					std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
@@ -268,9 +271,8 @@ public:
 				size_t			pos = std::string::npos;
 				if((pos = p_name.find(base_match)) != std::string::npos) {
 					// get the right hand side of the string
-					// TODO rhs should be made lowercase according to
-					// Skyrim SE specs...
-					const std::string	rhs = p_name.substr(pos + base_match.length());
+					// rhs is to be lowercase Skyrim SE specs...
+					const std::string	rhs = to_lower(p_name.substr(pos + base_match.length()));
 					if(rhs.empty() || (*rhs.rbegin() == '/'))
 						continue;
 					++rv;
@@ -392,8 +394,8 @@ private:
 								x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));
 					if(!x_src)
 						throw std::runtime_error("Invalid ModuleConfig section, 'source' missing");
-					const std::string	src((const char*)x_src);
-					std::string		dst((x_dst) ? (const char*)x_dst : "");
+					const std::string	src(path2unix((const char*)x_src));
+					std::string		dst(path2unix((x_dst) ? (const char*)x_dst : ""));
 					if(!dst.empty() && *dst.rbegin() != '/') {
 						dst += '/';
 					}
@@ -404,8 +406,8 @@ private:
 								x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));
 					if(!x_src)
 						throw std::runtime_error("Invalid ModuleConfig section, 'source' missing");
-					const std::string	src((const char*)x_src);
-					std::string		dst((x_dst) ? (const char*)x_dst : "");
+					const std::string	src(path2unix((const char*)x_src));
+					std::string		dst(path2unix((x_dst) ? (const char*)x_dst : ""));
 					if(!dst.empty() && *dst.rbegin() != '/') {
 						dst += '/';
 					}
@@ -606,7 +608,7 @@ int main(int argc, char *argv[]) {
 		ModCfgParser		mcp(sstr.str());
 		mcp.print_tree(std::cout);
 		// execute it
-		mcp.execute(std::cout, std::cin, a, {"./output/"});
+		mcp.execute(std::cout, std::cin, a, {"./Data/"});
 
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
