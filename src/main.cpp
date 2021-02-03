@@ -134,7 +134,7 @@ namespace {
 					}
 				} break;
 				case prompt_choice_mode::AT_LEAST_ONE: {
-					if(!rv.empty()) {
+					if(rv.empty()) {
 						ostr << "Invalid choice - please provide at least one" << std::endl;
 						continue;
 					}
