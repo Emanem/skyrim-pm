@@ -40,21 +40,115 @@ namespace {
 		}
 	}
 
-	std::string prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& a, const bool f_empty = false) {
+	std::string trim(std::string str) {
+		size_t endpos = str.find_last_not_of(" \t");
+		size_t startpos = str.find_first_not_of(" \t");
+		if( std::string::npos != endpos ) {
+			str = str.substr( 0, endpos+1 );
+			str = str.substr( startpos );
+		} else {
+			str.erase(std::remove(std::begin(str), std::end(str), ' '), std::end(str));
+		}
+		return str;
+	}
+
+	enum prompt_choice_mode {
+		ONE_ONLY = 1,
+		ONE_OR_NONE,
+		ANY,
+		AT_LEAST_ONE
+	};
+
+	std::vector<std::string> prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& csv_a, const prompt_choice_mode f_mode = prompt_choice_mode::ONE_ONLY) {
+		// split the csv answer and trim it
+		std::vector<std::string>	ans,
+						rv;
+		auto fn_split_n_trim = [](const std::string& in, std::vector<std::string>& out, bool do_sort) -> void {
+			out.clear();
+			std::stringstream		sstr(in);
+			std::string			tmp;
+			while(std::getline(sstr, tmp, ',')) {
+				tmp = trim(tmp);
+				if(!tmp.empty())
+					out.push_back(tmp);
+			}
+			if(do_sort) std::sort(out.begin(), out.end());
+			auto last = std::unique(out.begin(), out.end());
+			out.erase(last, out.end());
+		};
+
+		auto fn_find_in_vec = [](const std::string& v, const std::vector<std::string>& vec) -> bool {
+			for(const auto& i : vec)
+				if(i == v)
+					return true;
+			return false;
+		};
+
+		fn_split_n_trim(csv_a, ans, false);
 		while(true) {
-			ostr << q << " : ";
+			ostr << q << " (";
+			for(size_t i = 0; i < ans.size(); ++i) {
+				if(i==0) ostr << ans[i];
+				else ostr << '/' << ans[i];
+			}
+			ostr << ") : ";
 			std::string c;
 			std::getline(istr, c);
-			if((c.length() > 1) || (std::string::npos == a.find(c[0]))) {
-				ostr << "Invalid answer" << std::endl;
-				continue;
+			fn_split_n_trim(c, rv, true);
+			switch(f_mode) {
+				case prompt_choice_mode::ONE_OR_NONE: {
+					if(rv.size() > 1) {
+						ostr << "Invalid choice - please provide just one or none" << std::endl;
+						continue;
+					} else if(rv.size() == 1 && !fn_find_in_vec(rv[0], ans)) {
+						ostr << "Invalid choice - answer not in the list" << std::endl;
+						continue;
+					}
+				} break;
+				case prompt_choice_mode::ANY: {
+					bool cont = false;
+					for(const auto& i : rv) {
+						if(!fn_find_in_vec(i, ans)) {
+							cont = true;
+							break;
+						}
+					}
+					if(cont) {
+						ostr << "Invalid choice - one or more answers not in the list" << std::endl;
+						continue;
+					}
+				} break;
+				case prompt_choice_mode::AT_LEAST_ONE: {
+					if(!rv.empty()) {
+						ostr << "Invalid choice - please provide at least one" << std::endl;
+						continue;
+					}
+					bool cont = false;
+					for(const auto& i : rv) {
+						if(!fn_find_in_vec(i, ans)) {
+							cont = true;
+							break;
+						}
+					}
+					if(cont) {
+						ostr << "Invalid choice - one or more answers not in the list" << std::endl;
+						continue;
+					}
+				} break;
+				default:
+				case prompt_choice_mode::ONE_ONLY: {
+					if(rv.size() != 1) {
+						ostr << "Invalid choice - please provide just one" << std::endl;
+						continue;
+					} else if(!fn_find_in_vec(rv[0], ans)) {
+						ostr << "Invalid choice - answer not in the list" << std::endl;
+						continue;
+					}
+				} break;
 			}
-			if(c.empty() && !f_empty) {
-				ostr << "Invalid answer" << std::endl;
-				continue;
-			}
-			return c;
+			break;
 		}
+		return rv;
 	}
 
 	bool is_yY(const std::string& in) {
@@ -248,8 +342,8 @@ private:
 		bool required(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
 			if(!n_requiredInstallFiles_)
 				return true;
-			const auto res = prompt_choice(ostr, istr, "Required files - Install? (y/n)", "ynYN");
-			if(!is_yY(res))
+			const auto res = prompt_choice(ostr, istr, "Required files - Install?", "y,n,Y,N");
+			if(!is_yY(res[0]))
 				return false;
 			// now cycle through all requirements
 			for (auto cur_node = n_requiredInstallFiles_->children; cur_node; cur_node = cur_node->next) {
@@ -290,7 +384,9 @@ private:
 			std::string	name;
 		};
 
-		std::vector<plugin_desc> get_plugin_options(xmlNode* plugins_node) {
+		std::vector<plugin_desc> get_plugin_options_display(xmlNode* plugins_node, std::ostream& ostr, std::string& csv_answers) {
+			std::stringstream	answ;
+			int			i = 0;
 			// scan through all plugins and prepare name/description
 			std::vector<plugin_desc>	pd;
 			for (auto cur_node = plugins_node->children; cur_node; cur_node = cur_node->next) {
@@ -303,24 +399,31 @@ private:
 					throw std::runtime_error("Invalid plugin, 'name' attribute missing");
 				const std::string	name((const char*)x_name);
 				pd.emplace_back(plugin_desc{cur_node, name});
+				ostr << "\t\t" << i << '\t' << name << std::endl;
+				if(i > 0) answ << ',';
+				answ << i;
+				++i;
 			}
+			csv_answers = answ.str();
 			return pd;
 		}
 
 		void group_SelectExactlyOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
-			auto	pd = get_plugin_options(plugins_node);
-			int	i = 0;
-			for(const auto& el : pd) {
-				ostr << "\t\t" << i << '\t' << el.name << std::endl;
-				++i;
-			}
-
+			std::string	answ;
+			auto		pd = get_plugin_options_display(plugins_node, ostr, answ);
+			const auto	rv = prompt_choice(ostr, istr, "\tSelect one", answ, prompt_choice_mode::ONE_ONLY);
 		}
 
 		void group_SelectAtMostOne(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			std::string	answ;
+			auto		pd = get_plugin_options_display(plugins_node, ostr, answ);
+			const auto	rv = prompt_choice(ostr, istr, "\tSelect one or none", answ, prompt_choice_mode::ONE_OR_NONE);
 		}
 
 		void group_SelectAny(xmlNode* plugins_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
+			std::string	answ;
+			auto		pd = get_plugin_options_display(plugins_node, ostr, answ);
+			const auto	rv = prompt_choice(ostr, istr, "\tSelect none or any", answ, prompt_choice_mode::ANY);
 		}
 
 		void group(xmlNode* group_node, std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
@@ -330,7 +433,7 @@ private:
 				throw std::runtime_error("Invalid group, 'type' attribute missing");
 			const std::string	name((x_name) ? (const char*)x_name : "<no name>"),
 						type((const char*)x_type);
-			ostr << "\t" << name << " [" << type << "]" << std::endl;
+			ostr << "\t" << name << std::endl;
 			for (auto cur_node = group_node->children; cur_node; cur_node = cur_node->next) {
 				if(cur_node->type != XML_ELEMENT_NODE)
 					continue;
