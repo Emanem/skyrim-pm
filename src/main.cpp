@@ -542,7 +542,12 @@ private:
 			}
 		}
 
-		bool flag_dep_check(xmlNode* cur_node) {
+		enum dep_check_mode {
+			AND = 1,
+			OR
+		};
+
+		bool flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm = dep_check_mode::AND) {
 			for(auto fd_node = cur_node; fd_node; fd_node = fd_node->next) {
 				if(fd_node->type != XML_ELEMENT_NODE)
 					continue;
@@ -553,12 +558,30 @@ private:
 				if(!x_flag)
 					throw std::runtime_error("Malformed 'flagDependency' section - 'flag' missing");
 				const auto	it = flags_.find(x_flag.c_str());
-				if(flags_.end() == it)
-					return false;
-				if(x_value && (it->second != x_value.c_str()))
-					return false;
+				// apply logic depending on the mode
+				// short circuit in AND and OR mode
+				switch(dcm) {
+					case dep_check_mode::OR: {
+						if(flags_.end() != it) {
+							if(!x_value) return true;
+							else if (it->second == x_value.c_str()) return true;
+						}
+					} break;
+					default:
+					case dep_check_mode::AND: {
+						if(flags_.end() == it)
+							return false;
+						if(x_value && (it->second != x_value.c_str()))
+							return false;
+					} break;
+				}
 			}
-			return true;
+			// given we're short circuiting if we reach
+			// this point and are in OR mode, then means
+			// no condition was satisfied - hence false
+			// if instead we're in AND mode, it means all
+			// was satisfied, hence return true
+			return (dcm == dep_check_mode::OR) ? false : true;
 		}
 
 		void steps(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
