@@ -539,6 +539,25 @@ private:
 			}
 		}
 
+		bool flag_dep_check(xmlNode* cur_node) {
+			for(auto fd_node = cur_node; fd_node; fd_node = fd_node->next) {
+				if(fd_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("flagDependency") != (const char*)fd_node->name)
+					continue;
+				const xc	x_flag(xmlGetProp(fd_node, (const xmlChar*)"flag")),
+						x_value(xmlGetProp(fd_node, (const xmlChar*)"value"));
+				if(!x_flag)
+					throw std::runtime_error("Malformed 'flagDependency' section - 'flag' missing");
+				const auto	it = flags_.find(x_flag.c_str());
+				if(flags_.end() == it)
+					return false;
+				if(x_value && (it->second != x_value.c_str()))
+					return false;
+			}
+			return true;
+		}
+
 		void steps(std::ostream& ostr, std::istream& istr, ar& a, const execute_info& ei) {
 			// reset flags at this stage
 			flags_.clear();
@@ -548,6 +567,24 @@ private:
 					continue;
 				if(std::string("installStep") != (const char*)cur_node->name)
 					continue;
+
+				// within an install step we may have
+				// the 'visible' node having dependency on flags
+				bool	skip = false;
+				for(auto vis_node = cur_node->children; vis_node; vis_node = vis_node->next) {
+					if(vis_node->type != XML_ELEMENT_NODE)
+						continue;
+					if(std::string("visible") != (const char*)vis_node->name)
+						continue;
+					// within visible, search for all 'flagDependency'
+					if(!flag_dep_check(vis_node->children)) {
+						skip = true;
+						break;
+					}
+				}
+				if(skip)
+					continue;
+
 				++i;
 				const xc		x_name(xmlGetProp(cur_node, (const xmlChar*)"name"));
 				const std::string	name((x_name) ? (const char*)x_name : "<no name>");
