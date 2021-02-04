@@ -343,7 +343,8 @@ private:
 		xmlDocPtr		doc_;
 		xmlNode			*n_moduleName_,
 					*n_installSteps_,
-					*n_requiredInstallFiles_;
+					*n_requiredInstallFiles_,
+					*n_conditionalFileInstalls_;
 
 		std::unordered_map<std::string, std::string>	flags_;
 
@@ -374,6 +375,8 @@ private:
 						n_installSteps_ = cur_node;
 					} else if(std::string("requiredInstallFiles") == (const char*)cur_node->name) {
 						n_requiredInstallFiles_ = cur_node;
+					} else if(std::string("conditionalFileInstalls") == (const char*)cur_node->name) {
+						n_conditionalFileInstalls_ = cur_node;
 					}
 				}
     			}
@@ -607,8 +610,51 @@ private:
 				}
 			}
 		}
+
+		void pattern(xmlNode* pattern, ar& a, const execute_info& ei) {
+			xmlNode	*deps = 0,
+				*files = 0;
+			for (auto cur_node = pattern->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("dependencies") == (const char*)cur_node->name) {
+					if(deps)
+						throw std::runtime_error("Malformed 'conditionalFileInstalls', multiple 'dependencies' in same pattern");
+					deps = cur_node;
+				} else if(std::string("files") == (const char*)cur_node->name) {
+					if(files)
+						throw std::runtime_error("Malformed 'conditionalFileInstalls', multiple 'files' in same pattern");
+					files = cur_node;
+				}
+			}
+			// only when both set do something
+			if(deps && files) {
+				if(!flag_dep_check(deps->children))
+					return;
+				copy_op_node(files->children, a, ei);
+			}
+		}
+
+		void cond(ar& a, const execute_info& ei) {
+			if(!n_conditionalFileInstalls_)
+				return;
+			for (auto cur_node = n_conditionalFileInstalls_->children; cur_node; cur_node = cur_node->next) {
+				if(cur_node->type != XML_ELEMENT_NODE)
+					continue;
+				if(std::string("patterns") != (const char*)cur_node->name)
+					continue;
+				// single pattern
+				for (auto ptn_node = cur_node->children; ptn_node; ptn_node = ptn_node->next) {
+					if(ptn_node->type != XML_ELEMENT_NODE)
+						continue;
+					if(std::string("pattern") != (const char*)ptn_node->name)
+						continue;
+					pattern(ptn_node, a, ei);
+				}
+			}
+		}
 public:
-		ModCfgParser(const std::string& s) : s_(s), doc_(0), n_moduleName_(0), n_installSteps_(0), n_requiredInstallFiles_(0) {
+		ModCfgParser(const std::string& s) : s_(s), doc_(0), n_moduleName_(0), n_installSteps_(0), n_requiredInstallFiles_(0), n_conditionalFileInstalls_(0) {
 			doc_ = xmlReadMemory(s_.c_str(), s_.length(), "noname.xml", NULL, 0);
 			if(!doc_)
 				throw std::runtime_error("Can't parse XML of ModuleConfig");
@@ -625,6 +671,7 @@ public:
 			if(!required(ostr, istr, a, ei));
 				//throw std::runtime_error("Required files present but skipped - aborting install");
 			steps(ostr, istr, a, ei);
+			cond(a, ei);
 		}
 
 		~ModCfgParser() {
