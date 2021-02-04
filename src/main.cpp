@@ -652,7 +652,15 @@ private:
 			}
 			// only when both set do something
 			if(deps && files) {
-				if(!flag_dep_check(deps->children))
+				// default enforce all 'flagDependency' to be checked
+				// only use 'Or' if set as such
+				dep_check_mode	dcm = dep_check_mode::AND;
+				const xc	op_mode(xmlGetProp(deps, (const xmlChar*)"operator"));
+				if(op_mode) {
+					if(std::string("Or") == op_mode.c_str())
+						dcm = dep_check_mode::OR;
+				}
+				if(!flag_dep_check(deps->children, dcm))
 					return;
 				copy_op_node(files->children, a, ei);
 			}
