@@ -23,7 +23,7 @@
 #include "opt.h"
 
 namespace {
-	const char*	VERSION = "0.1.0";
+	const char*	VERSION = "0.1.1";
 }
 
 int main(int argc, char *argv[]) {
@@ -42,7 +42,8 @@ int main(int argc, char *argv[]) {
 				throw std::runtime_error("Can't find/extract ModuleConfig.xml from archive");
 			// parse the XML
 			modcfg::parser		mcp(sstr.str());
-			//mcp.print_tree(std::cout);
+			if(opt::xml_debug)
+				mcp.print_tree(std::cout);
 			// execute it
 			mcp.execute(std::cout, std::cin, a, {"./Data/"});
 		}

@@ -22,7 +22,8 @@
 
 namespace opt {
 	extern bool		use_term_style,
-				log_enabled;
+				log_enabled,
+				xml_debug;
 	extern std::string	skyrim_se_data;
 
 	extern int parse_args(int argc, char *argv[], const char *prog, const char *version);
