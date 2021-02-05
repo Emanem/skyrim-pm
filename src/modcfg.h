@@ -62,7 +62,7 @@ private:
 			OR
 		};
 
-		bool flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm = dep_check_mode::AND);
+		bool flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm = dep_check_mode::AND, std::ostream* ostr = 0);
 		void steps(std::ostream& ostr, std::istream& istr, arc::file& a, const execute_info& ei);
 		void pattern(xmlNode* pattern, arc::file& a, const execute_info& ei);
 		void cond(arc::file& a, const execute_info& ei);

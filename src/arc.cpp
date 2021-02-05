@@ -63,6 +63,7 @@ bool arc::file::extract_modcfg(std::ostream& data_out, const std::string& f_Modu
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
 		const std::string	p_name = archive_entry_pathname(entry);
 		if(std::regex_search(p_name, self_regex)) {
+			LOG << "Found '" << f_ModuleConfig << "' at [" << p_name << "]";
 			rv = true;
 			const static size_t	buflen = 2048;
 			char			buf[buflen];
@@ -83,6 +84,7 @@ bool arc::file::extract_modcfg(std::ostream& data_out, const std::string& f_Modu
 }
 
 bool arc::file::extract_file(const std::string& fname, const std::string& base_outdir) {
+	LOG << "Extracting file [" << fname << "] into directory [" << base_outdir << "]";
 	bool			rv = false;
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
@@ -93,14 +95,17 @@ bool arc::file::extract_file(const std::string& fname, const std::string& base_o
 			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
 			const static size_t	buflen = 2048;
 			char			buf[buflen];
-			la_ssize_t		rd = 0;
+			la_ssize_t		rd = 0,
+						total_sz = 0;
 			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
 				if(0 == rd)
 					break;
-				if(rd > 0) of.write(&buf[0], rd);
+				of.write(&buf[0], rd);
+				total_sz += rd;
 			}
 			if(rd < 0)
 				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
+			LOG << "File [" << fname << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
 			break;
 		}
 	}
@@ -110,6 +115,7 @@ bool arc::file::extract_file(const std::string& fname, const std::string& base_o
 }
 
 size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir) {
+	LOG << "Extracting path [" << base_match << "] into directory [" << base_outdir << "]";
 	size_t	rv = 0;
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
@@ -131,14 +137,17 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
 			const static size_t	buflen = 2048;
 			char			buf[buflen];
-			la_ssize_t		rd = 0;
+			la_ssize_t		rd = 0,
+						total_sz = 0;
 			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
 				if(0 == rd)
 					break;
-				if(rd > 0) of.write(&buf[0], rd);
+				of.write(&buf[0], rd);
+				total_sz += rd;
 			}
 			if(rd < 0)
 				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
+			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
 		}
 	}
 	// reset the archive handle

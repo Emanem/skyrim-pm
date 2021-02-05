@@ -83,6 +83,9 @@ void modcfg::parser::init(void) {
 			}
 		}
 	}
+	LOG 	<< "Found 'moduleName' (" << (!!n_moduleName_) << ") 'installSteps' (" << (!!n_installSteps_)
+		<< ") 'requiredInstallFiles' (" << (!!n_requiredInstallFiles_) << ") 'conditionalFileInstalls' ("
+		<< (!!n_conditionalFileInstalls_) << ")";
 	if(!n_moduleName_ || !n_installSteps_)
 		throw std::runtime_error("ModuleConfig is missing 'moduleName' and/or 'installSteps'");
 }
@@ -240,7 +243,7 @@ void modcfg::parser::group(xmlNode* group_node, std::ostream& ostr, std::istream
 	}
 }
 
-bool modcfg::parser::flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm) {
+bool modcfg::parser::flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm, std::ostream* ostr) {
 	for(auto fd_node = cur_node; fd_node; fd_node = fd_node->next) {
 		if(fd_node->type != XML_ELEMENT_NODE)
 			continue;
@@ -256,8 +259,14 @@ bool modcfg::parser::flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm)
 		switch(dcm) {
 			case dep_check_mode::OR: {
 				if(flags_.end() != it) {
-					if(!x_value) return true;
-					else if (it->second == x_value.c_str()) return true;
+					if(!x_value) {
+						if(ostr) *ostr << x_flag.c_str() << " ";
+						return true;
+					}
+					else if (it->second == x_value.c_str()) {
+						if(ostr) *ostr << x_flag.c_str() << "{" << x_value.c_str() << "} ";
+						return true;
+					}
 				}
 			} break;
 			default:
@@ -266,6 +275,11 @@ bool modcfg::parser::flag_dep_check(xmlNode* cur_node, const dep_check_mode dcm)
 					return false;
 				if(x_value && (it->second != x_value.c_str()))
 					return false;
+				if(ostr) {
+					*ostr << x_flag.c_str();
+					if(x_value) *ostr << "{" << x_value.c_str() << "}";
+					*ostr << " ";
+				}
 			} break;
 		}
 	}
@@ -301,12 +315,14 @@ void modcfg::parser::steps(std::ostream& ostr, std::istream& istr, arc::file& a,
 				break;
 			}
 		}
-		if(skip)
-			continue;
-
-		++i;
 		const xc		x_name(xmlGetProp(cur_node, (const xmlChar*)"name"));
 		const std::string	name((x_name) ? (const char*)x_name : "<no name>");
+		if(skip) {
+			LOG << "Step '" << name << "' skipped due to missing dependency";
+			continue;
+		}
+
+		++i;
 		//
 		std::stringstream	step_title;
 		step_title << "Install step " << i << ": ";
@@ -355,9 +371,15 @@ void modcfg::parser::pattern(xmlNode* pattern, arc::file& a, const execute_info&
 			if(std::string("Or") == op_mode.c_str())
 				dcm = dep_check_mode::OR;
 		}
-		if(!flag_dep_check(deps->children, dcm))
+		std::ostringstream	ostr;
+		if(!flag_dep_check(deps->children, dcm, &ostr)) {
+			LOG << "Pattern skipped due dependecies not satisfied; so far: " << ostr.str();
 			return;
+		}
+		LOG << "Pattern being executed due to dependecies satisfied: " << ostr.str();
 		copy_op_node(files->children, a, ei);
+	} else {
+		LOG << "Pattern skipped due to missing 'dependencies' and/or 'files' sections";
 	}
 }
 
