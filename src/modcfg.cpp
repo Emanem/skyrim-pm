@@ -394,8 +394,8 @@ void modcfg::parser::print_tree(std::ostream& ostr) {
 void modcfg::parser::execute(std::ostream& ostr, std::istream& istr, arc::file& a, const execute_info& ei) {
 	init();
 	display_name(ostr);
-	if(!required(ostr, istr, a, ei));
-		//throw std::runtime_error("Required files present but skipped - aborting install");
+	if(!required(ostr, istr, a, ei))
+		throw std::runtime_error("Required files present but skipped - aborting install");
 	steps(ostr, istr, a, ei);
 	cond(a, ei);
 }
