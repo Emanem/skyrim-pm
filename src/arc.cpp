@@ -20,6 +20,18 @@
 #include <fstream>
 #include <regex>
 #include <archive_entry.h>
+#include <strings.h>
+
+namespace {
+	size_t ci_find(const std::string& s, const std::string& f) {
+		const auto	rv = std::search(s.begin(), s.end(), f.begin(), f.end(),
+		[](const char& lhs, const char& rhs) -> bool {
+			return std::tolower(lhs) == std::tolower(rhs);
+		});
+		if(rv != s.end()) return rv - s.begin();
+		return std::string::npos;
+	}
+}
 
 // unforutnately there is no way
 // to "rewind" libarchive streams
@@ -88,7 +100,7 @@ bool arc::file::extract_file(const std::string& fname, const std::string& base_o
 	bool			rv = false;
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
-		if(fname == archive_entry_pathname(entry)) {
+		if(!strcasecmp(fname.c_str(),archive_entry_pathname(entry))) {
 			rv = true;
 			const std::string	tgt_filename = base_outdir + fname;
 			utils::ensure_fname_path(tgt_filename);
@@ -122,7 +134,7 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 		const std::string	p_name(archive_entry_pathname(entry));
 		std::string		rhs;
 		size_t			pos = std::string::npos;
-		if((pos = p_name.find(base_match)) != std::string::npos) {
+		if((pos = ci_find(p_name, base_match)) != std::string::npos) {
 			// get the right hand side of the string
 			// rhs is to be lowercase Skyrim SE specs...
 			const std::string	rhs = utils::to_lower(p_name.substr(pos + base_match.length()));
