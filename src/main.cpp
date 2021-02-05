@@ -19,9 +19,12 @@
 #include <sstream>
 #include <libxml/parser.h>
 #include "modcfg.h"
+#include "utils.h"
 
 int main(int argc, char *argv[]) {
 	try {
+		utils::term::enable();
+
 		if(argc < 1)
 			throw std::runtime_error("Need to provide a FOMOD compatible archive name");
 
@@ -33,15 +36,15 @@ int main(int argc, char *argv[]) {
 			throw std::runtime_error("Can't find/extract ModuleConfig.xml from archive");
 		// parse the XML
 		modcfg::parser		mcp(sstr.str());
-		mcp.print_tree(std::cout);
+		//mcp.print_tree(std::cout);
 		// execute it
 		mcp.execute(std::cout, std::cin, a, {"./Data/"});
 
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
 	} catch(const std::exception& e) {
-		std::cerr << "Exception: " << e.what() << std::endl;
+		std::cerr << utils::term::dim("Exception: ") << utils::term::red(e.what()) << std::endl;
 	} catch(...) {
-		std::cerr << "Unknown exception" << std::endl;
+		std::cerr << utils::term::red("Unknown exception") << std::endl;
 	}
 }

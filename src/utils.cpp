@@ -21,6 +21,16 @@
 #include <algorithm>
 #include <sstream>
 
+/*
+ * https://stackoverflow.com/questions/2616906/how-do-i-output-coloured-text-to-a-linux-terminal
+ * https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+ * https://stackoverflow.com/questions/33326039/c-ansi-escape-codes-not-displaying-color-to-console
+ */
+
+namespace {
+	bool	term_enabled = false;
+}
+
 std::vector<std::string> utils::prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& csv_a, const prompt_choice_mode f_mode) {
 	// split the csv answer and trim it
 	std::vector<std::string>	ans,
@@ -48,22 +58,25 @@ std::vector<std::string> utils::prompt_choice(std::ostream& ostr, std::istream& 
 
 	fn_split_n_trim(csv_a, ans, false);
 	while(true) {
-		ostr << q << " (";
+		ostr << q;
+		std::stringstream answs;
+		answs << " (";
 		for(size_t i = 0; i < ans.size(); ++i) {
-			if(i==0) ostr << ans[i];
-			else ostr << '/' << ans[i];
+			if(i==0) answs << ans[i];
+			else answs << '/' << ans[i];
 		}
-		ostr << ") : ";
+		answs << ")";
+		ostr << term::dim(answs.str()) << " : ";
 		std::string c;
 		std::getline(istr, c);
 		fn_split_n_trim(c, rv, true);
 		switch(f_mode) {
 			case prompt_choice_mode::ONE_OR_NONE: {
 				if(rv.size() > 1) {
-					ostr << "Invalid choice - please provide just one or none" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - please provide just one or none")) << std::endl;
 					continue;
 				} else if(rv.size() == 1 && !fn_find_in_vec(rv[0], ans)) {
-					ostr << "Invalid choice - answer not in the list" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - answer not in the list")) << std::endl;
 					continue;
 				}
 			} break;
@@ -76,13 +89,13 @@ std::vector<std::string> utils::prompt_choice(std::ostream& ostr, std::istream& 
 					}
 				}
 				if(cont) {
-					ostr << "Invalid choice - one or more answers not in the list" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - one or more answers not in the list")) << std::endl;
 					continue;
 				}
 			} break;
 			case prompt_choice_mode::AT_LEAST_ONE: {
 				if(rv.empty()) {
-					ostr << "Invalid choice - please provide at least one" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - please provide at least one")) << std::endl;
 					continue;
 				}
 				bool cont = false;
@@ -93,17 +106,17 @@ std::vector<std::string> utils::prompt_choice(std::ostream& ostr, std::istream& 
 					}
 				}
 				if(cont) {
-					ostr << "Invalid choice - one or more answers not in the list" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - one or more answers not in the list")) << std::endl;
 					continue;
 				}
 			} break;
 			default:
 			case prompt_choice_mode::ONE_ONLY: {
 				if(rv.size() != 1) {
-					ostr << "Invalid choice - please provide just one" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - please provide just one")) << std::endl;
 					continue;
 				} else if(!fn_find_in_vec(rv[0], ans)) {
-					ostr << "Invalid choice - answer not in the list" << std::endl;
+					ostr << term::bold(term::yellow("Invalid choice - answer not in the list")) << std::endl;
 					continue;
 				}
 			} break;
@@ -154,5 +167,40 @@ std::string utils::to_lower(const std::string& in) {
 	for(auto& i : out)
 		i = std::tolower(i);
 	return out;
+}
+
+void utils::term::enable(void) {
+	// shoudl check we can do this
+	term_enabled = true;
+}
+
+std::string utils::term::red(const std::string& in) {
+	if(!term_enabled) return in;
+	return std::string("\033[31m") + in + "\033[0m";
+}
+
+std::string utils::term::blue(const std::string& in) {
+	if(!term_enabled) return in;
+	return std::string("\033[34m") + in + "\033[0m";
+}
+
+std::string utils::term::green(const std::string& in) {
+	if(!term_enabled) return in;
+	return std::string("\033[32m") + in + "\033[0m";
+}
+
+std::string utils::term::yellow(const std::string& in) {
+	if(!term_enabled) return in;
+	return std::string("\033[33m") + in + "\033[0m";
+}
+
+std::string utils::term::bold(const std::string& in) {
+	if(!term_enabled) return in;
+	return std::string("\033[1m") + in + "\033[0m";
+}
+
+std::string utils::term::dim(const std::string& in) {
+	if(!term_enabled) return in;
+	return std::string("\033[2m") + in + "\033[0m";
 }
 

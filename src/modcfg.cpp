@@ -88,7 +88,7 @@ void modcfg::parser::init(void) {
 }
 
 void modcfg::parser::display_name(std::ostream& ostr) {
-	ostr << "Module: " << xc(xmlNodeGetContent(n_moduleName_)).c_str() << std::endl;
+	ostr << utils::term::dim("Module: ") << utils::term::bold(xc(xmlNodeGetContent(n_moduleName_)).c_str()) << std::endl;
 }
 
 void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_info& ei) {
@@ -128,7 +128,7 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 bool modcfg::parser::required(std::ostream& ostr, std::istream& istr, arc::file& a, const execute_info& ei) {
 	if(!n_requiredInstallFiles_)
 		return true;
-	const auto res = utils::prompt_choice(ostr, istr, "Required files - Install?", "y,n,Y,N");
+	const auto res = utils::prompt_choice(ostr, istr, "Required files - Install?", "y,n");
 	if(!utils::is_yY(res[0]))
 		return false;
 	// now cycle through all copy requirements
@@ -222,7 +222,7 @@ void modcfg::parser::group(xmlNode* group_node, std::ostream& ostr, std::istream
 		throw std::runtime_error("Invalid group, 'type' attribute missing");
 	const std::string	name((x_name) ? (const char*)x_name : "<no name>"),
 				type((const char*)x_type);
-	ostr << "\t" << name << std::endl;
+	ostr << "\t" << utils::term::green(name) << std::endl;
 	for (auto cur_node = group_node->children; cur_node; cur_node = cur_node->next) {
 		if(cur_node->type != XML_ELEMENT_NODE)
 			continue;
@@ -308,7 +308,9 @@ void modcfg::parser::steps(std::ostream& ostr, std::istream& istr, arc::file& a,
 		const xc		x_name(xmlGetProp(cur_node, (const xmlChar*)"name"));
 		const std::string	name((x_name) ? (const char*)x_name : "<no name>");
 		//
-		ostr << "Install step " << i << ": " << name << std::endl;
+		std::stringstream	step_title;
+		step_title << "Install step " << i << ": ";
+		ostr << utils::term::dim(step_title.str()) << utils::term::blue(name) << std::endl;
 		// get 'optionalFileGroups' tokens...
 		for(auto ofg_node = cur_node->children; ofg_node; ofg_node = ofg_node->next) {
 			if(ofg_node->type != XML_ELEMENT_NODE)

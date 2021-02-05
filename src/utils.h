@@ -35,6 +35,16 @@ namespace utils {
 	extern std::string trim(std::string str);
 	extern std::string path2unix(const std::string& in);
 	extern std::string to_lower(const std::string& in);
+
+	namespace term {
+		extern void enable(void);
+		std::string red(const std::string& in);
+		std::string blue(const std::string& in);
+		std::string green(const std::string& in);
+		std::string yellow(const std::string& in);
+		std::string bold(const std::string& in);
+		std::string dim(const std::string& in);
+	}
 }
 
 #endif //_UTILS_H_
