@@ -20,6 +20,8 @@
 #include <stdexcept>
 #include <algorithm>
 #include <sstream>
+#include <chrono>
+#include "opt.h"
 
 /*
  * https://stackoverflow.com/questions/2616906/how-do-i-output-coloured-text-to-a-linux-terminal
@@ -29,6 +31,21 @@
 
 namespace {
 	bool	term_enabled = false;
+
+	std::string get_ts(void) {
+		using namespace std::chrono;
+		const auto	tp = high_resolution_clock::now();
+		const auto	tp_tm = time_point_cast<system_clock::duration>(tp);
+		const auto	tm_t = system_clock::to_time_t(tp_tm);
+		struct tm	res = {0};
+		localtime_r(&tm_t, &res);
+		char		tm_fmt[32],
+				tm_buf[32];
+		std::sprintf(tm_fmt, "%%Y-%%m-%%dT%%H:%%M:%%S.%03i", static_cast<int>(duration_cast<milliseconds>(tp.time_since_epoch()).count()%1000));
+		std::strftime(tm_buf, sizeof(tm_buf), tm_fmt, &res);
+
+		return tm_buf;
+	}
 }
 
 std::vector<std::string> utils::prompt_choice(std::ostream& ostr, std::istream& istr, const std::string& q, const std::string& csv_a, const prompt_choice_mode f_mode) {
@@ -202,5 +219,16 @@ std::string utils::term::bold(const std::string& in) {
 std::string utils::term::dim(const std::string& in) {
 	if(!term_enabled) return in;
 	return std::string("\033[2m") + in + "\033[0m";
+}
+
+utils::log::log() {
+}
+
+utils::log::~log() {
+	if(!opt::log_enabled)
+		return;
+
+	const std::string	f = term::dim(get_ts() + ' ' + sstr_.str());
+	std::cerr << f << std::endl;
 }
 

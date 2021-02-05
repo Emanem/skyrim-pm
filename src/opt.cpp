@@ -20,7 +20,8 @@
 #include <iostream>
 #include <cstring>
 
-bool		opt::use_term_style = true;
+bool		opt::use_term_style = true,
+		opt::log_enabled = false;
 std::string	opt::skyrim_se_data;
 
 namespace {
@@ -29,6 +30,7 @@ namespace {
 		std::cerr <<	"Usage: " << prog << " [options] <mod1.7z> <mod2.rar> <mod3...>\nExecutes skyrim-pm " << version << "\n\n"
 			  <<	"-s,--sse-data   Use specified Skyrim SE data directory. If not set, skyrim-pm\n"
 			  <<    "                will try to invoke 'locate' to find it and use the first entry\n"
+			  <<	"--log           Print log on std::cerr (default not set)\n"
 			  <<	"--no-colors     Do not display terminal colors/styles\n"
 		<< std::flush;
 	}
@@ -39,6 +41,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 	static struct option	long_options[] = {
 		{"help",		no_argument,	   0,	'h'},
 		{"sse-data",		required_argument, 0,	's'},
+		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{0, 0, 0, 0}
 	};
@@ -57,6 +60,8 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 				break;
 			if(!std::strcmp("no-colors", long_options[option_index].name)) {
 				opt::use_term_style = false;
+			} else if(!std::strcmp("log", long_options[option_index].name)) {
+				opt::log_enabled = true;
 			}
 		} break;
 

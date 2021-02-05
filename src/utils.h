@@ -20,6 +20,8 @@
 
 #include <string>
 #include <vector>
+#include <sstream>
+#include <iostream>
 
 namespace utils {
 	enum prompt_choice_mode {
@@ -45,7 +47,25 @@ namespace utils {
 		std::string bold(const std::string& in);
 		std::string dim(const std::string& in);
 	}
+
+	class log {
+		std::stringstream	sstr_;
+
+		log(const log&) = delete;
+		log& operator=(const log&) = delete;
+public:
+		log();
+		~log();
+
+		template<typename T>
+		log& operator<<(const T& in) {
+			sstr_ << in;
+			return *this;
+		}
+	};
 }
+
+#define	LOG	(utils::log())
 
 #endif //_UTILS_H_
 

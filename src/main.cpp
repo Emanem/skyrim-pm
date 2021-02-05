@@ -32,7 +32,6 @@ int main(int argc, char *argv[]) {
 		// setup options and enable
 		if(opt::use_term_style)
 			utils::term::enable();
-
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
 			// open archive
