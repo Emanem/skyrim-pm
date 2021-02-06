@@ -3,7 +3,7 @@ Simple *Skyrim SE* plugin manager for linux; this is to make it easy to extract 
 
 ## Status
 
-Currently does basic unpacking of compressed mods and should install and manage dynamic choices within each archive. Does not support inter-packages/mods references. As of now it doesn't lookup the Skyrim `Data` directory, and will output files/directories into `./Data`, hence you want to run it from main *Skyrim SE* install directory.
+Currently does basic unpacking of compressed mods and should install and manage dynamic choices within each archive. Does not support inter-packages/mods references. If not specifying option `-s` (or `--sse-data`) it will try to lookup the Skyrim SE `Data` directory (otherwise in case of failure will output files/directories into `./Data` hence in such cases you want to run _skyrim-pm_ from wihtin `Skyrim Special Edition` directory).
 
 ## How to build
 
@@ -21,8 +21,19 @@ Executes skyrim-pm 0.1.1
 --no-colors     Do not display terminal colors/styles
 ```
 
+## F.A.Q.
+
+1. *Why did you write this?* Wanted to understand and experiment _FOMOD_ format.
+2. *What file formats are supported?* All archive (7z, tar, rar, zip, ...) as long as are supported by [libarchive](https://www.libarchive.org/); archives have to be compliand with _FOMOD_ format (i.e. containing an xml called _ModuleConfig.xml_ with detailed instruction on how to manage files).
+3. *Extracting large mod files (i.e. SMIM) takes ages. Why?* This application uses _libarchive_ to look into archives; whilst it's a very easy to use API and supports almost _all_ formats, it only allows sequential scans, hence extracting files becomes slower in some cases because the same archive needs to be traversed multiple times.
+4. *How can I see more details of what *skyrim-pm* is doing?* Just specify the `--log` option.
+5. *I think feature *x* would be cool. How can I get it?* Simply open a bug on this github repository.
+6. *I want to install a mod, but it doesn't come with *FOMOD* format. How can I do it right?* In this case you won't be able to use *skyrim-pm*, you'll have to manually extract it. Just remember to convert **all** the files inside `meshes` and `texture` subdirectories to lower case (and replace existing files possibly).
+7. *Looks like data extraction is slow and I have one CPU core pegged to 100%. Why?* This is due to libarchive operational execution.
+
 ## Todo
 
-- [ ] Ensure option `-s` is properly managed
-- [ ] Automatically `locate` *Skyrim SE* `Data` directory
+- [ ] Investigate if there's a better way to improve libarchive usage/performance
+- [x] Ensure option `-s` is properly managed
+- [x] Automatically `locate` *Skyrim SE* `Data` directory
 - [ ] ...
