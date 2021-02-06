@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <sstream>
 #include <chrono>
+#include <memory>
 #include "opt.h"
 
 /*
@@ -45,6 +46,24 @@ namespace {
 		std::strftime(tm_buf, sizeof(tm_buf), tm_fmt, &res);
 
 		return tm_buf;
+	}
+
+	std::string exec(const char* cmd) {
+		const static size_t			buf_sz = 256;
+		char					buf[buf_sz];
+		std::stringstream			res;
+		std::unique_ptr<FILE, int(*)(FILE*)>	pipe(popen(cmd, "r"), pclose);
+
+		if (!pipe) {
+			throw std::runtime_error("popen failed");
+		}
+
+		size_t			rb = 0;
+		while((rb = fread(buf, 1, buf_sz, pipe.get())) > 0) {
+			res.write(buf, rb);
+		}
+
+		return res.str();
 	}
 }
 
@@ -161,8 +180,8 @@ void utils::ensure_fname_path(const std::string& tgt_filename) {
 }
 
 std::string utils::trim(std::string str) {
-	size_t endpos = str.find_last_not_of(" \t");
-	size_t startpos = str.find_first_not_of(" \t");
+	size_t endpos = str.find_last_not_of(" \t\n\r");
+	size_t startpos = str.find_first_not_of(" \t\n\r");
 	if( std::string::npos != endpos ) {
 		str = str.substr( 0, endpos+1 );
 		str = str.substr( startpos );
@@ -184,6 +203,13 @@ std::string utils::to_lower(const std::string& in) {
 	for(auto& i : out)
 		i = std::tolower(i);
 	return out;
+}
+
+std::string utils::get_skyrim_se_data(void) {
+	const char*	LOCATE_SKYRIM_SE_DATE_CMD = "locate --regex \".*steamapps/common/Skyrim Special Edition$\" | head -1";
+	const auto	rc = exec(LOCATE_SKYRIM_SE_DATE_CMD);
+	// rc may be with newline, trim it
+	return trim(rc) + "/Data";
 }
 
 void utils::term::enable(void) {

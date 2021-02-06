@@ -37,6 +37,7 @@ namespace utils {
 	extern std::string trim(std::string str);
 	extern std::string path2unix(const std::string& in);
 	extern std::string to_lower(const std::string& in);
+	extern std::string get_skyrim_se_data(void);
 
 	namespace term {
 		extern void enable(void);

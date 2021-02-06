@@ -32,6 +32,21 @@ int main(int argc, char *argv[]) {
 		// setup options and enable
 		if(opt::use_term_style)
 			utils::term::enable();
+		// setup skyrim data dir
+		if(opt::skyrim_se_data.empty()) {
+			LOG << "Skyrim SE Data directory not set, locating it";
+			opt::skyrim_se_data = utils::get_skyrim_se_data();
+			if(opt::skyrim_se_data.empty()) {
+				LOG << "Skyrim SE Data directory not found, defaulting to './Data'";
+				std::cout << utils::term::yellow(
+						"Warning, can't find Skyrim SE install directory "
+						"(i.e. 'Skyrim Special Edition'), ensure skyrim-pm "
+						"is running from there") << std::endl;
+				opt::skyrim_se_data = "./Data";
+			} else {
+				LOG << "Skyrim SE Data directory found at '" << opt::skyrim_se_data << "'";
+			}
+		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
 			// open archive
@@ -45,7 +60,7 @@ int main(int argc, char *argv[]) {
 			if(opt::xml_debug)
 				mcp.print_tree(std::cout);
 			// execute it
-			mcp.execute(std::cout, std::cin, a, {"./Data/"});
+			mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data });
 		}
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
