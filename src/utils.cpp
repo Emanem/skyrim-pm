@@ -173,8 +173,10 @@ void utils::ensure_fname_path(const std::string& tgt_filename) {
 	auto p_next = tgt_filename.find('/');
 	while(p_next != std::string::npos) {
 		const std::string cur_path = tgt_filename.substr(0, p_next);
-		if(mkdir(cur_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0 && errno != EEXIST)
-			throw std::runtime_error("Can't create destination path");
+		if(!cur_path.empty()) {
+			if(mkdir(cur_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0 && errno != EEXIST)
+				throw std::runtime_error("Can't create destination path");
+		}
 		p_next = tgt_filename.find('/', p_next+1);
 	}
 }

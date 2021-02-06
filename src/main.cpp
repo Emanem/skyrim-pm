@@ -47,6 +47,9 @@ int main(int argc, char *argv[]) {
 				LOG << "Skyrim SE Data directory found at '" << opt::skyrim_se_data << "'";
 			}
 		}
+		// ensure the path folder is '/' terminated
+		if(*opt::skyrim_se_data.rbegin() != '/')
+			opt::skyrim_se_data += '/';
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
 			// open archive
