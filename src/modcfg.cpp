@@ -119,11 +119,21 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 				throw std::runtime_error("Invalid ModuleConfig section, 'source' missing");
 			const std::string	src(utils::path2unix((const char*)x_src));
 			std::string		dst(utils::path2unix((x_dst) ? (const char*)x_dst : ""));
-			if(!dst.empty() && *dst.rbegin() != '/') {
-				dst += '/';
+			// in case dst is non empty is supposed to be a fully qualified
+			// file name, relative to 'Data' - skyrim_data_dir already
+			// conatains '/' at the end
+			std::string		tgt_filename = ei.skyrim_data_dir;
+			// if dst is non empty, we should simply append to tgt_filename
+			// otherwise we'll have to find the filename
+			// and concatenate
+			if(!dst.empty()) {
+				tgt_filename += dst;
+			} else {
+				const auto	p_slash = src.find_last_of('/');
+				tgt_filename += src.substr((p_slash == std::string::npos) ? 0 : p_slash+1);
 			}
 			// now invoke the file extraction/copy
-			a.extract_file(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
+			a.extract_file(src, tgt_filename);
 		}
 	}
 }

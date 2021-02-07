@@ -95,14 +95,15 @@ bool arc::file::extract_modcfg(std::ostream& data_out, const std::string& f_Modu
 	return rv;
 }
 
-bool arc::file::extract_file(const std::string& fname, const std::string& base_outdir) {
-	LOG << "Extracting file [" << fname << "] into directory [" << base_outdir << "]";
+bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename) {
+	LOG << "Extracting file [" << fname << "] as file [" << tgt_filename << "]";
 	bool			rv = false;
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
-		if(!strcasecmp(fname.c_str(),archive_entry_pathname(entry))) {
+		const std::string	p_name(archive_entry_pathname(entry));
+		size_t			pos = std::string::npos;
+		if((pos = ci_find(p_name, fname)) != std::string::npos) {
 			rv = true;
-			const std::string	tgt_filename = base_outdir + fname;
 			utils::ensure_fname_path(tgt_filename);
 			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
 			const static size_t	buflen = 2048;
@@ -132,7 +133,6 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
 		const std::string	p_name(archive_entry_pathname(entry));
-		std::string		rhs;
 		size_t			pos = std::string::npos;
 		if((pos = ci_find(p_name, base_match)) != std::string::npos) {
 			// get the right hand side of the string
