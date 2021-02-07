@@ -56,8 +56,16 @@ int main(int argc, char *argv[]) {
 			arc::file		a(argv[i]);
 			// get and load the ModuleConfig.xml file
 			std::stringstream	sstr;
-			if(!a.extract_modcfg(sstr))
-				throw std::runtime_error(std::string("Can't find/extract ModuleConfig.xml from archive '") + argv[i] + "'");
+			if(!a.extract_modcfg(sstr)) {
+				if(opt::data_extract) {
+					std::stringstream	msg;
+					msg	<< "Can't find/extract ModuleConfig.xml from archive '"
+						<< argv[i] << "', proceeding with raw data extraction";
+					std::cout << utils::term::yellow(msg.str()) << std::endl;
+					a.extract_data(opt::skyrim_se_data);
+					continue;
+				} else throw std::runtime_error(std::string("Can't find/extract ModuleConfig.xml from archive '") + argv[i] + "'");
+			}
 			// parse the XML
 			modcfg::parser		mcp(sstr.str());
 			if(opt::xml_debug)

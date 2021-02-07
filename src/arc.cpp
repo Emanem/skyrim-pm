@@ -193,7 +193,7 @@ size_t arc::file::extract_data(const std::string& base_outdir) {
 			char			buf[buflen];
 			la_ssize_t		rd = 0,
 						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
+			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0){
 				if(0 == rd)
 					break;
 				of.write(&buf[0], rd);
@@ -203,6 +203,7 @@ size_t arc::file::extract_data(const std::string& base_outdir) {
 				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
 			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
 		};
+		std::smatch		m;
 
 		if(std::regex_search(p_name, bsa_regex) ||
 		   std::regex_search(p_name, esp_regex) ||
@@ -213,23 +214,17 @@ size_t arc::file::extract_data(const std::string& base_outdir) {
 			const auto		p_slash = p_name.find_last_of('/');
 			const std::string	tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
 			fn_extract_file(tgt_filename);
-		} else if(std::regex_search(p_name, data_regex)) {
-			// in this case we're apparently having a path containing data
-			// this should always return != npos, but let's check anyway
-			const auto	d_pos = ci_find(p_name, "data/");
-			if(d_pos == std::string::npos)
-				continue;
+		} else if(std::regex_search(p_name, m, data_regex)) {
 			// extract path and make it lowercase
-			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(d_pos + 5));
+			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
 			fn_extract_file(tgt_filename);
-		} else if(std::regex_search(p_name, meshes_regex)) {
-			// in this case we're apparently having a path containing meshes
-			// this should always return != npos, but let's check anyway
-			const auto	d_pos = ci_find(p_name, "meshes/");
-			if(d_pos == std::string::npos)
-				continue;
+		} else if(std::regex_search(p_name, m, meshes_regex) ||
+			  std::regex_search(p_name, m, textures_regex)) {
 			// extract path and make it lowercase
-			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(d_pos));
+			// ensure if the first term of match is '/'
+			// to exclude it
+			const size_t		slash_shift = (*(m[0].str().begin()) == '/') ? 1 : 0;
+			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
 			fn_extract_file(tgt_filename);
 		} else {
 			LOG << "Unprocessed file [" << p_name << "]";
