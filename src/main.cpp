@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 			// get and load the ModuleConfig.xml file
 			std::stringstream	sstr;
 			if(!a.extract_modcfg(sstr))
-				throw std::runtime_error("Can't find/extract ModuleConfig.xml from archive");
+				throw std::runtime_error(std::string("Can't find/extract ModuleConfig.xml from archive '") + argv[i] + "'");
 			// parse the XML
 			modcfg::parser		mcp(sstr.str());
 			if(opt::xml_debug)
