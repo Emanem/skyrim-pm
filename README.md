@@ -5,6 +5,13 @@ Simple *Skyrim SE* plugin manager for linux; this is to make it easy to extract 
 
 Currently does basic unpacking of compressed mods and should install and manage dynamic choices within each archive. Does not support inter-packages/mods references. If not specifying option `-s` (or `--sse-data`) it will try to lookup the Skyrim SE `Data` directory (otherwise in case of failure will output files/directories into `./Data` hence in such cases you want to run _skyrim-pm_ from wihtin `Skyrim Special Edition` directory).
 
+If you have an archive without _ModuleConfig.xml_ you can try running it with `-x` (`--data-ext`) option to try install the files based on their names: _*.esp/bsa/ini_ will go into the specified _Data_ directory,whilst files under _meshes_, _textures_ will be copied with their own relative paths under respective subdirectories.
+
+### Known issues
+
+* Some archives take longer to decompress; this is a _libarchive_ issue, unforutnately the performance of such archive is bad (installing _SMIM_ took approximately 50 minutes on a _5950x_).
+* _RAR_ archives are not properly supported, sometime those fail extracting for no real reason; this is another _libarchive_ [issue](https://github.com/libarchive/libarchive/issues/1490). As a workaround it's easier to de-compress and compress again in another format.
+
 ## How to build
 
 Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `sudo apt install libxml2-dev libarchive-dev`), then invoke `make`.
@@ -12,10 +19,13 @@ Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `su
 ## How to run
 ```
 Usage: ./skyrim-pm [options] <mod1.7z> <mod2.rar> <mod3...>
-Executes skyrim-pm 0.1.1
+Executes skyrim-pm 0.1.2
 
--s,--sse-data   Use specified Skyrim SE data directory. If not set, skyrim-pm
+-s,--sse-data   Use specified Skyrim SE Data directory. If not set, skyrim-pm
                 will try to invoke 'locate' to find it and use the first entry
+-x,--data-ext   Try to extract the archive no matter what even when ModuleConfig.xml
+                can't be found. In this case all files which match a given criteria
+                will be extracted and saved under the specified Data directory
 --log           Print log on std::cerr (default not set)
 --xml-debug     Print xml debug info for ModuleConfig.xml
 --no-colors     Do not display terminal colors/styles
@@ -34,6 +44,7 @@ Executes skyrim-pm 0.1.1
 ## Todo
 
 - [ ] Investigate if there's a better way to improve libarchive usage/performance
+- [x] Support _raw data_ extraction for archives without _ModuleConfig.xml_
 - [x] Ensure option `-s` is properly managed
 - [x] Automatically `locate` *Skyrim SE* `Data` directory
 - [ ] ...
