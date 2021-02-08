@@ -38,7 +38,7 @@ Executes skyrim-pm 0.1.2
 3. *Extracting large mod files (i.e. SMIM) takes ages. Why?* This application uses _libarchive_ to look into archives; whilst it's a very easy to use API and supports almost _all_ formats, it only allows sequential scans, hence extracting files becomes slower in some cases because the same archive needs to be traversed multiple times.
 4. *How can I see more details of what *skyrim-pm* is doing?* Just specify the `--log` option.
 5. *I think feature *x* would be cool. How can I get it?* Simply open a bug on this github repository.
-6. *I want to install a mod, but it doesn't come with *FOMOD* format. How can I do it right?* In this case you won't be able to use *skyrim-pm*, you'll have to manually extract it. Just remember to convert **all** the files inside `meshes` and `texture` subdirectories to lower case (and replace existing files possibly).
+6. *I want to install a mod, but it doesn't come with *FOMOD* format. How can I do it right?* In this case you won't be able to use *skyrim-pm*, you'll have to manually extract it. Just remember to convert **all** the files inside `meshes` and `texture` subdirectories to lower case (and replace existing files possibly). Alternatively you can run with option `-x` (or `--data-ext`) but be aware that _shyrim-pm_ will try its best to install files (recommended to also run with `--log` option).
 7. *Looks like data extraction is slow and I have one CPU core pegged to 100%. Why?* This is due to libarchive operational execution.
 
 ## Todo
