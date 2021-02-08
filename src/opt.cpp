@@ -22,6 +22,7 @@
 
 bool		opt::use_term_style = true,
 		opt::log_enabled = false,
+		opt::data_extract = false,
 		opt::xml_debug = false;
 std::string	opt::skyrim_se_data;
 
@@ -29,8 +30,11 @@ namespace {
 	// settings/options management
 	void print_help(const char *prog, const char *version) {
 		std::cerr <<	"Usage: " << prog << " [options] <mod1.7z> <mod2.rar> <mod3...>\nExecutes skyrim-pm " << version << "\n\n"
-			  <<	"-s,--sse-data   Use specified Skyrim SE data directory. If not set, skyrim-pm\n"
+			  <<	"-s,--sse-data   Use specified Skyrim SE Data directory. If not set, skyrim-pm\n"
 			  <<    "                will try to invoke 'locate' to find it and use the first entry\n"
+			  <<	"-x,--data-ext   Try to extract the archive no matter what even when ModuleConfig.xml\n"
+			  <<	"                can't be found. In this case all files which match a given criteria\n"
+			  <<	"                will be extracted and saved under the specified Data directory\n"
 			  <<	"--log           Print log on std::cerr (default not set)\n"
 			  <<	"--xml-debug     Print xml debug info for ModuleConfig.xml\n"
 			  <<	"--no-colors     Do not display terminal colors/styles\n"
@@ -43,6 +47,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 	static struct option	long_options[] = {
 		{"help",		no_argument,	   0,	'h'},
 		{"sse-data",		required_argument, 0,	's'},
+		{"data-ext",		no_argument,	   0,	'x'},
 		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{"xml-debug",		no_argument,	   0,	0},
@@ -53,7 +58,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		// getopt_long stores the option index here
 		int		option_index = 0;
 
-		if(-1 == (c = getopt_long(argc, argv, "hs:", long_options, &option_index)))
+		if(-1 == (c = getopt_long(argc, argv, "hs:x", long_options, &option_index)))
 			break;
 
 		switch (c) {
@@ -77,6 +82,10 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 
 		case 's': {
 			opt::skyrim_se_data = optarg;
+		} break;
+
+		case 'x': {
+			opt::data_extract = true;
 		} break;
 
 		case '?':

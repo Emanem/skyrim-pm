@@ -167,6 +167,72 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 	return rv;
 }
 
+size_t arc::file::extract_data(const std::string& base_outdir) {
+	size_t			rv = 0;
+	const std::string	act_base_outdir = (base_outdir.empty()) ? "./" : ((*base_outdir.rbegin() == '/') ? base_outdir : base_outdir + "/");
+	// this will scan through the entire archive,
+	// trying to match/find specific patterns and
+	// extracting those at best of understanding
+	const std::regex 	bsa_regex(".bsa$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+				esp_regex(".esp$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+				ini_regex(".ini$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+				data_regex("(^|/)data/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+				meshes_regex("(^|/)meshes/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+				textures_regex("(^|/)textures/", std::regex_constants::ECMAScript | std::regex_constants::icase);
+	struct archive_entry	*entry = 0;
+	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
+		const std::string	p_name = utils::path2unix(archive_entry_pathname(entry));
+		// skip empty records or paths
+		if(p_name.empty() || *p_name.rbegin() == '/')
+			continue;
+		// simple lambda to extract a file
+		auto fn_extract_file = [&p_name, this](const std::string& tgt_filename) -> void {
+			utils::ensure_fname_path(tgt_filename);
+			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
+			const static size_t	buflen = 2048;
+			char			buf[buflen];
+			la_ssize_t		rd = 0,
+						total_sz = 0;
+			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0){
+				if(0 == rd)
+					break;
+				of.write(&buf[0], rd);
+				total_sz += rd;
+			}
+			if(rd < 0)
+				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
+			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
+		};
+		std::smatch		m;
+
+		if(std::regex_search(p_name, bsa_regex) ||
+		   std::regex_search(p_name, esp_regex) ||
+		   std::regex_search(p_name, ini_regex)) {
+			++rv;
+			// get the filename and extract to base_outdir
+			// for now preserve original name casing
+			const auto		p_slash = p_name.find_last_of('/');
+			const std::string	tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
+			fn_extract_file(tgt_filename);
+		} else if(std::regex_search(p_name, m, data_regex)) {
+			// extract path and make it lowercase
+			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
+			fn_extract_file(tgt_filename);
+		} else if(std::regex_search(p_name, m, meshes_regex) ||
+			  std::regex_search(p_name, m, textures_regex)) {
+			// extract path and make it lowercase
+			// ensure if the first term of match is '/'
+			// to exclude it
+			const size_t		slash_shift = (*(m[0].str().begin()) == '/') ? 1 : 0;
+			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
+			fn_extract_file(tgt_filename);
+		} else {
+			LOG << "Unprocessed file [" << p_name << "]";
+		}
+	}
+	return rv;
+}
+
 arc::file::~file() {
 	archive_read_free(a_);
 }
