@@ -178,7 +178,9 @@ size_t arc::file::extract_data(const std::string& base_outdir) {
 				ini_regex(".ini$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
 				data_regex("(^|/)data/", std::regex_constants::ECMAScript | std::regex_constants::icase),
 				meshes_regex("(^|/)meshes/", std::regex_constants::ECMAScript | std::regex_constants::icase),
-				textures_regex("(^|/)textures/", std::regex_constants::ECMAScript | std::regex_constants::icase);
+				textures_regex("(^|/)textures/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+				sound_regex("(^|/)sound/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+				interface_regex("(^|/)interface/", std::regex_constants::ECMAScript | std::regex_constants::icase);
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
 		const std::string	p_name = utils::path2unix(archive_entry_pathname(entry));
@@ -219,7 +221,9 @@ size_t arc::file::extract_data(const std::string& base_outdir) {
 			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
 			fn_extract_file(tgt_filename);
 		} else if(std::regex_search(p_name, m, meshes_regex) ||
-			  std::regex_search(p_name, m, textures_regex)) {
+			  std::regex_search(p_name, m, textures_regex) ||
+			  std::regex_search(p_name, m, sound_regex) ||
+			  std::regex_search(p_name, m, interface_regex)) {
 			// extract path and make it lowercase
 			// ensure if the first term of match is '/'
 			// to exclude it

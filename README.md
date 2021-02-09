@@ -5,7 +5,7 @@ Simple *Skyrim SE* plugin manager for linux; this is to make it easy to extract 
 
 Currently does basic unpacking of compressed mods and should install and manage dynamic choices within each archive. Does not support inter-packages/mods references. If not specifying option `-s` (or `--sse-data`) it will try to lookup the Skyrim SE `Data` directory (otherwise in case of failure will output files/directories into `./Data` hence in such cases you want to run _skyrim-pm_ from wihtin `Skyrim Special Edition` directory).
 
-If you have an archive without _ModuleConfig.xml_ you can try running it with `-x` (`--data-ext`) option to try install the files based on their names: _*.esp/bsa/ini_ will go into the specified _Data_ directory,whilst files under _meshes_, _textures_ will be copied with their own relative paths under respective subdirectories.
+If you have an archive without _ModuleConfig.xml_ you can try running it with `-x` (`--data-ext`) option to try install the files based on their names: _*.esp/bsa/ini_ will go into the specified _Data_ directory,whilst files under _meshes_, _textures_, _sound_ and _interface_ will be copied with their own relative paths under respective subdirectories.
 
 ### Known issues
 
@@ -19,7 +19,7 @@ Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `su
 ## How to run
 ```
 Usage: ./skyrim-pm [options] <mod1.7z> <mod2.rar> <mod3...>
-Executes skyrim-pm 0.1.2
+Executes skyrim-pm 0.1.3
 
 -s,--sse-data   Use specified Skyrim SE Data directory. If not set, skyrim-pm
                 will try to invoke 'locate' to find it and use the first entry
@@ -44,6 +44,7 @@ Executes skyrim-pm 0.1.2
 ## Todo
 
 - [ ] Investigate if there's a better way to improve libarchive usage/performance
+- [ ] Add option to modify *Plugins.txt* to automatically add and enable *esp* files
 - [x] Support _raw data_ extraction for archives without _ModuleConfig.xml_
 - [x] Ensure option `-s` is properly managed
 - [x] Automatically `locate` *Skyrim SE* `Data` directory

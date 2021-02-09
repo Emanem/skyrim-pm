@@ -23,7 +23,7 @@
 #include "opt.h"
 
 namespace {
-	const char*	VERSION = "0.1.2";
+	const char*	VERSION = "0.1.3";
 }
 
 int main(int argc, char *argv[]) {
