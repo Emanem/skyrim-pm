@@ -21,6 +21,7 @@
 #include "modcfg.h"
 #include "utils.h"
 #include "opt.h"
+#include "plugins.h"
 
 namespace {
 	const char*	VERSION = "0.1.3";
@@ -74,9 +75,9 @@ int main(int argc, char *argv[]) {
 				mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data, &esp_files });
 			}
 			// manage ESP list
-			/*for(const auto& i : esp_files) {
-				std::cout << utils::term::yellow(i) << std::endl;
-			}*/
+			if(!opt::skyrim_se_plugins.empty()) {
+				plugins::add_esp_files(esp_files, opt::skyrim_se_data, opt::skyrim_se_plugins);
+			}
 		}
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
