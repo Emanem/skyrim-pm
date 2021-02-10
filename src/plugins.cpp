@@ -39,13 +39,11 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 	}
 	// get the content of the file
 	std::vector<std::string>	existing_plugins;
-	bool				plugins_file_empty = true;
 	{
 		std::ifstream	plugins_s(plugins_file);
 		if(plugins_s) {
 			std::string	line;
 			while(std::getline(plugins_s, line)) {
-				plugins_file_empty = false;
 				if(line.empty() || (*line.begin() == '#'))
 					continue;
 				existing_plugins.push_back(line);
@@ -60,8 +58,8 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 		throw std::runtime_error(std::string("Can't open plugins file '") + plugins_file + "' for updating it");
 	for(const auto& i : r_esp_names) {
 		auto fn_find_esp = [&existing_plugins, &i](void) -> bool {
+			const std::regex	esp_regex(i, std::regex_constants::ECMAScript | std::regex_constants::icase);
 			for(const auto& j : existing_plugins) {
-				const std::regex	esp_regex(i, std::regex_constants::ECMAScript | std::regex_constants::icase);
 				if(std::regex_search(j, esp_regex))
 					return true;
 			}
@@ -81,12 +79,7 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 		// now add it to the list
 		added_plugins.insert(i);
 		// a '*' denotes enabled plugin
-		if(plugins_file_empty) {
-			plugins_file_empty = false;
-			plugins_s << "*" << i;
-		} else {
-			plugins_s << "\n*" << i;
-		}
+		plugins_s << "*" << i << '\n';
 	}
 }
 
