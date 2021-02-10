@@ -73,6 +73,10 @@ int main(int argc, char *argv[]) {
 				// execute it
 				mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data, &esp_files });
 			}
+			// manage ESP list
+			/*for(const auto& i : esp_files) {
+				std::cout << utils::term::yellow(i) << std::endl;
+			}*/
 		}
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
