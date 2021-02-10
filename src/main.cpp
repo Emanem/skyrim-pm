@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
 		for(int i = mod_idx; i < argc; ++i) {
 			// open archive
 			arc::file		a(argv[i]);
+			arc::file_names		esp_files;
 			// get and load the ModuleConfig.xml file
 			std::stringstream	sstr;
 			if(!a.extract_modcfg(sstr)) {
@@ -62,16 +63,16 @@ int main(int argc, char *argv[]) {
 					msg	<< "Can't find/extract ModuleConfig.xml from archive '"
 						<< argv[i] << "', proceeding with raw data extraction";
 					std::cout << utils::term::yellow(msg.str()) << std::endl;
-					a.extract_data(opt::skyrim_se_data);
-					continue;
+					a.extract_data(opt::skyrim_se_data, &esp_files);
 				} else throw std::runtime_error(std::string("Can't find/extract ModuleConfig.xml from archive '") + argv[i] + "'");
+			} else {
+				// parse the XML
+				modcfg::parser		mcp(sstr.str());
+				if(opt::xml_debug)
+					mcp.print_tree(std::cout);
+				// execute it
+				mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data, &esp_files });
 			}
-			// parse the XML
-			modcfg::parser		mcp(sstr.str());
-			if(opt::xml_debug)
-				mcp.print_tree(std::cout);
-			// execute it
-			mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data });
 		}
 		// cleanup the xml2 library structures
 		xmlCleanupParser();

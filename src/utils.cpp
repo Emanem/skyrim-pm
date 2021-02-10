@@ -215,7 +215,7 @@ std::string utils::get_skyrim_se_data(void) {
 }
 
 void utils::term::enable(void) {
-	// shoudl check we can do this
+	// should check we can do this
 	term_enabled = true;
 }
 

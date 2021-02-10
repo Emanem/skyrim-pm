@@ -31,6 +31,13 @@ namespace {
 		if(rv != s.end()) return rv - s.begin();
 		return std::string::npos;
 	}
+
+	std::string file_name(const std::string& f_path) {
+		const auto	p_slash = f_path.find_last_of('/');
+		if(p_slash != std::string::npos)
+			return f_path.substr(p_slash+1);
+		return f_path;
+	}
 }
 
 // unforutnately there is no way
@@ -167,7 +174,7 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 	return rv;
 }
 
-size_t arc::file::extract_data(const std::string& base_outdir) {
+size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_list) {
 	size_t			rv = 0;
 	const std::string	act_base_outdir = (base_outdir.empty()) ? "./" : ((*base_outdir.rbegin() == '/') ? base_outdir : base_outdir + "/");
 	// this will scan through the entire archive,
@@ -216,6 +223,11 @@ size_t arc::file::extract_data(const std::string& base_outdir) {
 			const auto		p_slash = p_name.find_last_of('/');
 			const std::string	tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
 			fn_extract_file(tgt_filename);
+			// in case we have loaded an esp
+			// then add it to the list
+			if(esp_list && std::regex_search(p_name, esp_regex)) {
+				esp_list->push_back(file_name(tgt_filename));
+			}
 		} else if(std::regex_search(p_name, m, data_regex)) {
 			// extract path and make it lowercase
 			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
