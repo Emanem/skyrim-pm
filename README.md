@@ -14,7 +14,7 @@ If you have an archive without _ModuleConfig.xml_ you can try running it with `-
 
 ## How to build
 
-Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `sudo apt install libxml2-dev libarchive-dev`), then invoke `make`.
+Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `sudo apt install libxml2-dev libarchive-dev`), then invoke `make` (or `make release` for optimized version).
 
 ## How to run
 ```
