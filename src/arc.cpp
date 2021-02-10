@@ -38,6 +38,24 @@ namespace {
 			return f_path.substr(p_slash+1);
 		return f_path;
 	}
+
+	void raw_extract_file(struct archive *a_, const std::string& p_name, const std::string& tgt_filename) {
+		utils::ensure_fname_path(tgt_filename);
+		std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
+		const static size_t	buflen = 2048;
+		char			buf[buflen];
+		la_ssize_t		rd = 0,
+					total_sz = 0;
+		while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0){
+			if(0 == rd)
+				break;
+			of.write(&buf[0], rd);
+			total_sz += rd;
+		}
+		if(rd < 0)
+			throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
+		LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
+	}
 }
 
 // unforutnately there is no way
@@ -102,7 +120,7 @@ bool arc::file::extract_modcfg(std::ostream& data_out, const std::string& f_Modu
 	return rv;
 }
 
-bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename) {
+bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename, file_names* esp_list) {
 	LOG << "Extracting file [" << fname << "] as file [" << tgt_filename << "]";
 	bool			rv = false;
 	struct archive_entry	*entry = 0;
@@ -111,21 +129,7 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 		size_t			pos = std::string::npos;
 		if((pos = ci_find(p_name, fname)) != std::string::npos) {
 			rv = true;
-			utils::ensure_fname_path(tgt_filename);
-			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
-			const static size_t	buflen = 2048;
-			char			buf[buflen];
-			la_ssize_t		rd = 0,
-						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
-				if(0 == rd)
-					break;
-				of.write(&buf[0], rd);
-				total_sz += rd;
-			}
-			if(rd < 0)
-				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
-			LOG << "File [" << fname << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
+			raw_extract_file(a_, p_name, tgt_filename);
 			break;
 		}
 	}
@@ -134,7 +138,7 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 	return rv;
 }
 
-size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir) {
+size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir, file_names* esp_list) {
 	LOG << "Extracting path [" << base_match << "] into directory [" << base_outdir << "]";
 	size_t	rv = 0;
 	struct archive_entry	*entry = 0;
@@ -152,21 +156,7 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 			// and if rhs starts with '/' we shouldn't
 			// include it of course
 			const std::string	tgt_filename = base_outdir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs);
-			utils::ensure_fname_path(tgt_filename);
-			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
-			const static size_t	buflen = 2048;
-			char			buf[buflen];
-			la_ssize_t		rd = 0,
-						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
-				if(0 == rd)
-					break;
-				of.write(&buf[0], rd);
-				total_sz += rd;
-			}
-			if(rd < 0)
-				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
-			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
+			raw_extract_file(a_, p_name, tgt_filename);
 		}
 	}
 	// reset the archive handle
@@ -194,24 +184,6 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 		// skip empty records or paths
 		if(p_name.empty() || *p_name.rbegin() == '/')
 			continue;
-		// simple lambda to extract a file
-		auto fn_extract_file = [&p_name, this](const std::string& tgt_filename) -> void {
-			utils::ensure_fname_path(tgt_filename);
-			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
-			const static size_t	buflen = 2048;
-			char			buf[buflen];
-			la_ssize_t		rd = 0,
-						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0){
-				if(0 == rd)
-					break;
-				of.write(&buf[0], rd);
-				total_sz += rd;
-			}
-			if(rd < 0)
-				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
-			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
-		};
 		std::smatch		m;
 
 		if(std::regex_search(p_name, bsa_regex) ||
@@ -222,7 +194,7 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 			// for now preserve original name casing
 			const auto		p_slash = p_name.find_last_of('/');
 			const std::string	tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
-			fn_extract_file(tgt_filename);
+			raw_extract_file(a_, p_name, tgt_filename);
 			// in case we have loaded an esp
 			// then add it to the list
 			if(esp_list && std::regex_search(p_name, esp_regex)) {
@@ -231,7 +203,7 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 		} else if(std::regex_search(p_name, m, data_regex)) {
 			// extract path and make it lowercase
 			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
-			fn_extract_file(tgt_filename);
+			raw_extract_file(a_, p_name, tgt_filename);
 		} else if(std::regex_search(p_name, m, meshes_regex) ||
 			  std::regex_search(p_name, m, textures_regex) ||
 			  std::regex_search(p_name, m, sound_regex) ||
@@ -241,7 +213,7 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 			// to exclude it
 			const size_t		slash_shift = (*(m[0].str().begin()) == '/') ? 1 : 0;
 			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
-			fn_extract_file(tgt_filename);
+			raw_extract_file(a_, p_name, tgt_filename);
 		} else {
 			LOG << "Unprocessed file [" << p_name << "]";
 		}
