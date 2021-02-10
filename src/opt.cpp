@@ -25,7 +25,7 @@ bool		opt::use_term_style = true,
 		opt::data_extract = false,
 		opt::xml_debug = false;
 std::string	opt::skyrim_se_data,
-		skyrim_se_plugins;
+		opt::skyrim_se_plugins;
 
 namespace {
 	// settings/options management

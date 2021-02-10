@@ -21,11 +21,16 @@ Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `su
 Usage: ./skyrim-pm [options] <mod1.7z> <mod2.rar> <mod3...>
 Executes skyrim-pm 0.1.3
 
--s,--sse-data   Use specified Skyrim SE Data directory. If not set, skyrim-pm
+-s,--sse-data d Use specified Skyrim SE Data directory (d). If not set, skyrim-pm
                 will try to invoke 'locate' to find it and use the first entry
 -x,--data-ext   Try to extract the archive no matter what even when ModuleConfig.xml
                 can't be found. In this case all files which match a given criteria
                 will be extracted and saved under the specified Data directory
+-p,--plugins f  Use specified file (f) as 'Plugins.txt' file; this parameter will
+                imply automatically modifying such file to enabling ESP files without
+                having to modify and use the 'load order' in-game menu; usually this
+                file would be located under:
+                <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>
 --log           Print log on std::cerr (default not set)
 --xml-debug     Print xml debug info for ModuleConfig.xml
 --no-colors     Do not display terminal colors/styles
