@@ -57,8 +57,11 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 	if(!plugins_s)
 		throw std::runtime_error(std::string("Can't open plugins file '") + plugins_file + "' for updating it");
 	for(const auto& i : r_esp_names) {
-		auto fn_find_esp = [&existing_plugins, &i](void) -> bool {
-			const std::regex	esp_regex(i, std::regex_constants::ECMAScript | std::regex_constants::icase);
+		// matches any characters that need to be escaped in RegEx
+		const std::regex	special_chars { R"([-[\]{}()*+?.,\^$|#\s])" };
+		const std::string	sanitized = std::regex_replace( i, special_chars, R"(\$&)" );
+		auto fn_find_esp = [&existing_plugins, &sanitized](void) -> bool {
+			const std::regex	esp_regex(sanitized, std::regex_constants::ECMAScript | std::regex_constants::icase);
 			for(const auto& j : existing_plugins) {
 				if(std::regex_search(j, esp_regex))
 					return true;
