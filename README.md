@@ -38,6 +38,18 @@ Executes skyrim-pm 0.1.3
 --no-colors     Do not display terminal colors/styles
 ```
 
+### Run examples
+If you're feeling somehow optimistic, you can run
+```
+./skyrim-pm -x --auto-plugins <mod1.7z> <mod2.zip> ...
+```
+This will optmistically try to install everything automatically. Setting the `--log` option would help out understanding potential issues in more details.
+
+If instead you want to _preview_ actions, then one could redirect both _Data_ and _Plugins.txt_ to loca directory/file, adding options `-s ./Data` and `-p plugin.txt`, thus
+```
+./skyrim-pm -s ./Data -p plugins.txt -x <mod1.7z> <mod2.zip> ...
+```
+
 ## F.A.Q.
 
 1. *Why did you write this?* Wanted to understand and experiment _FOMOD_ format.
@@ -52,7 +64,7 @@ Executes skyrim-pm 0.1.3
 ## Todo
 
 - [ ] Investigate if there's a better way to improve libarchive usage/performance
-- [ ] Add option to modify *Plugins.txt* to automatically add and enable *esp* files
+- [x] Add option to modify *Plugins.txt* to automatically add and enable *esp* files
 - [x] Support _raw data_ extraction for archives without _ModuleConfig.xml_
 - [x] Ensure option `-s` is properly managed
 - [x] Automatically `locate` *Skyrim SE* `Data` directory
