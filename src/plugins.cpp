@@ -79,7 +79,7 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 		// now add it to the list
 		added_plugins.insert(i);
 		// a '*' denotes enabled plugin
-		plugins_s << "*" << i << '\n';
+		plugins_s << "*" << i << std::endl;
 	}
 }
 

@@ -23,6 +23,7 @@
 bool		opt::use_term_style = true,
 		opt::log_enabled = false,
 		opt::data_extract = false,
+		opt::auto_plugins = false,
 		opt::xml_debug = false;
 std::string	opt::skyrim_se_data,
 		opt::skyrim_se_plugins;
@@ -41,6 +42,8 @@ namespace {
 			  <<	"                having to modify and use the 'load order' in-game menu; usually this\n"
 			  <<	"                file would be located under:\n"
 			  <<	"                <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>\n"
+			  <<	"--auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option\n"
+			  <<	"                -p (or --plugins) got set to same file name (default disabled)\n"
 			  <<	"--log           Print log on std::cerr (default not set)\n"
 			  <<	"--xml-debug     Print xml debug info for ModuleConfig.xml\n"
 			  <<	"--no-colors     Do not display terminal colors/styles\n"
@@ -55,6 +58,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		{"sse-data",		required_argument, 0,	's'},
 		{"data-ext",		no_argument,	   0,	'x'},
 		{"plugins",		required_argument, 0,	'p'},
+		{"auto-plugins",	no_argument,	   0,	0},
 		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{"xml-debug",		no_argument,	   0,	0},
@@ -79,6 +83,8 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 				opt::log_enabled = true;
 			} else if(!std::strcmp("xml-debug", long_options[option_index].name)) {
 				opt::xml_debug = true;
+			} else if(!std::strcmp("auto-plugins", long_options[option_index].name)) {
+				opt::auto_plugins = true;
 			}
 		} break;
 

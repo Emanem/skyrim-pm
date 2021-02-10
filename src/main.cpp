@@ -48,6 +48,18 @@ int main(int argc, char *argv[]) {
 				LOG << "Skyrim SE Data directory found at '" << opt::skyrim_se_data << "'";
 			}
 		}
+		// setup the plugins file
+		if(opt::auto_plugins && opt::skyrim_se_plugins.empty()) {
+			LOG << "Skyrim SE Plugins.txt not set, locating it";
+			opt::skyrim_se_plugins = utils::get_skyrim_se_plugins();
+			if(opt::skyrim_se_plugins.empty())
+				throw std::runtime_error("Can't automatically find 'Plugins.txt', please specify it manually");
+			else {
+				LOG << "Skyrim SE Plugins.txt found at '" << opt::skyrim_se_plugins << "'";
+			}
+		} else if (opt::auto_plugins && !opt::skyrim_se_plugins.empty()) {
+			throw std::runtime_error("Both 'Plugins.txt' file and automated search for the same have been specified, please set one only option");
+		}
 		// ensure the path folder is '/' terminated
 		if(*opt::skyrim_se_data.rbegin() != '/')
 			opt::skyrim_se_data += '/';

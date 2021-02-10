@@ -24,6 +24,7 @@ namespace opt {
 	extern bool		use_term_style,
 				log_enabled,
 				data_extract,
+				auto_plugins,
 				xml_debug;
 	extern std::string	skyrim_se_data,
 				skyrim_se_plugins;

@@ -31,6 +31,8 @@ Executes skyrim-pm 0.1.3
                 having to modify and use the 'load order' in-game menu; usually this
                 file would be located under:
                 <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>
+--auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option
+                -p (or --plugins) got set to same file name (default disabled)
 --log           Print log on std::cerr (default not set)
 --xml-debug     Print xml debug info for ModuleConfig.xml
 --no-colors     Do not display terminal colors/styles
@@ -45,6 +47,7 @@ Executes skyrim-pm 0.1.3
 5. *I think feature *x* would be cool. How can I get it?* Simply open a bug on this github repository.
 6. *I want to install a mod, but it doesn't come with *FOMOD* format. How can I do it right?* In this case you won't be able to use *skyrim-pm*, you'll have to manually extract it. Just remember to convert **all** the files inside `meshes` and `texture` subdirectories to lower case (and replace existing files possibly). Alternatively you can run with option `-x` (or `--data-ext`) but be aware that _shyrim-pm_ will try its best to install files (recommended to also run with `--log` option).
 7. *Looks like data extraction is slow and I have one CPU core pegged to 100%. Why?* This is due to libarchive operational execution.
+8. *I have installed *Skyrim SE* but nor *Data* nor *Plugins.txt* can be automatically found. Any suggestion?* Run `sudo updatedb`, this will refresh the `locate` cache (*skyrim-pm* uses such program to find ou these files).
 
 ## Todo
 
