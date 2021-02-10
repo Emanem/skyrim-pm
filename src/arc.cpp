@@ -32,13 +32,6 @@ namespace {
 		return std::string::npos;
 	}
 
-	std::string file_name(const std::string& f_path) {
-		const auto	p_slash = f_path.find_last_of('/');
-		if(p_slash != std::string::npos)
-			return f_path.substr(p_slash+1);
-		return f_path;
-	}
-
 	void raw_extract_file(struct archive *a_, const std::string& p_name, const std::string& tgt_filename) {
 		utils::ensure_fname_path(tgt_filename);
 		std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
@@ -55,6 +48,31 @@ namespace {
 		if(rd < 0)
 			throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
 		LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
+	}
+
+	// enum to classify if a file type is 
+	// used for specific plugin purposes
+	// by Skyrim SE - usually
+	// those files should go into data directory
+	enum sse_p_filetype {
+		NONE = 0,
+		ESP,
+		BSA,
+		INI
+	};
+
+	const sse_p_filetype get_file_type(const std::string& f_name) {
+		const static std::regex	bsa_regex("\\.bsa$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+					esp_regex("\\.esp$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+					ini_regex("\\.ini$" , std::regex_constants::ECMAScript | std::regex_constants::icase);
+		if(std::regex_search(f_name, bsa_regex)) {
+			return sse_p_filetype::BSA;
+		} else if(std::regex_search(f_name, esp_regex)) {
+			return sse_p_filetype::ESP;
+		} else if(std::regex_search(f_name, ini_regex)) {
+			return sse_p_filetype::INI;
+		}
+		return sse_p_filetype::NONE;
 	}
 }
 
@@ -130,6 +148,11 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 		if((pos = ci_find(p_name, fname)) != std::string::npos) {
 			rv = true;
 			raw_extract_file(a_, p_name, tgt_filename);
+			// if we need to report esp files
+			// and the file is and esp, then report it
+			if(esp_list && (sse_p_filetype::ESP == get_file_type(tgt_filename))) {
+				esp_list->push_back(tgt_filename);
+			}
 			break;
 		}
 	}
@@ -157,6 +180,11 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 			// include it of course
 			const std::string	tgt_filename = base_outdir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs);
 			raw_extract_file(a_, p_name, tgt_filename);
+			// if we need to report esp files
+			// and the file is and esp, then report it
+			if(esp_list && (sse_p_filetype::ESP == get_file_type(tgt_filename))) {
+				esp_list->push_back(tgt_filename);
+			}
 		}
 	}
 	// reset the archive handle
@@ -170,10 +198,7 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 	// this will scan through the entire archive,
 	// trying to match/find specific patterns and
 	// extracting those at best of understanding
-	const std::regex 	bsa_regex(".bsa$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
-				esp_regex(".esp$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
-				ini_regex(".ini$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
-				data_regex("(^|/)data/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+	const static std::regex	data_regex("(^|/)data/", std::regex_constants::ECMAScript | std::regex_constants::icase),
 				meshes_regex("(^|/)meshes/", std::regex_constants::ECMAScript | std::regex_constants::icase),
 				textures_regex("(^|/)textures/", std::regex_constants::ECMAScript | std::regex_constants::icase),
 				sound_regex("(^|/)sound/", std::regex_constants::ECMAScript | std::regex_constants::icase),
@@ -185,10 +210,8 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 		if(p_name.empty() || *p_name.rbegin() == '/')
 			continue;
 		std::smatch		m;
-
-		if(std::regex_search(p_name, bsa_regex) ||
-		   std::regex_search(p_name, esp_regex) ||
-		   std::regex_search(p_name, ini_regex)) {
+		sse_p_filetype		ft = sse_p_filetype::NONE;
+		if((ft = get_file_type(p_name)) != sse_p_filetype::NONE) {
 			++rv;
 			// get the filename and extract to base_outdir
 			// for now preserve original name casing
@@ -197,8 +220,8 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 			raw_extract_file(a_, p_name, tgt_filename);
 			// in case we have loaded an esp
 			// then add it to the list
-			if(esp_list && std::regex_search(p_name, esp_regex)) {
-				esp_list->push_back(file_name(tgt_filename));
+			if(esp_list && (ft == sse_p_filetype::ESP)) {
+				esp_list->push_back(tgt_filename);
 			}
 		} else if(std::regex_search(p_name, m, data_regex)) {
 			// extract path and make it lowercase
