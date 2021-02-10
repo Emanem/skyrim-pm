@@ -17,7 +17,76 @@
 
 #include "plugins.h"
 #include "utils.h"
+#include <fstream>
+#include <regex>
+#include <set>
 
-void plugins::add_esp_files(const arc::file_names& esp_files, const std::string& basepath, const std::string& plugin_file) {
+void plugins::add_esp_files(const arc::file_names& esp_files, const std::string& basepath, const std::string& plugins_file) {
+	// first of all, clean the list of ESP which are
+	// not installed under proper data directory
+	arc::file_names	r_esp_names;
+	for(const auto& i : esp_files) {
+		// get file name
+		const auto	esp_name = utils::file_name(i);
+		if((basepath + esp_name) != i) {
+			std::stringstream	msg;
+			msg	<< "Discarding '" << i << "' from automated "
+				<< "install, please manually copy and enable it";
+			std::cout << utils::term::yellow(msg.str()) << std::endl;
+		} else {
+			r_esp_names.push_back(esp_name);
+		}
+	}
+	// get the content of the file
+	std::vector<std::string>	existing_plugins;
+	bool				plugins_file_empty = true;
+	{
+		std::ifstream	plugins_s(plugins_file);
+		if(plugins_s) {
+			std::string	line;
+			while(std::getline(plugins_s, line)) {
+				plugins_file_empty = false;
+				if(line.empty() || (*line.begin() == '#'))
+					continue;
+				existing_plugins.push_back(line);
+			}
+		}
+	}
+	// now open the file in w mode
+	// and add the plugins, enabling those
+	std::set<std::string>		added_plugins;
+	std::ofstream			plugins_s(plugins_file);
+	if(!plugins_s)
+		throw std::runtime_error(std::string("Can't open plugins file '") + plugins_file + "' for updating it");
+	for(const auto& i : r_esp_names) {
+		auto fn_find_esp = [&existing_plugins, &i](void) -> bool {
+			for(const auto& j : existing_plugins) {
+				const std::regex	esp_regex(i, std::regex_constants::ECMAScript | std::regex_constants::icase);
+				if(std::regex_search(j, esp_regex))
+					return true;
+			}
+			return false;
+		};
+		if(fn_find_esp()) {
+			std::stringstream	msg;
+			msg	<< "Plugin/mod '" << i << "' already in file '"
+				<< plugins_file << "', please manually manage it";
+			std::cout << utils::term::yellow(msg.str()) << std::endl;
+			continue;
+		}
+		if(added_plugins.end() != added_plugins.find(i)) {
+			LOG << "ESP '" << i << "' has just been inserted, skipping it";
+			continue;
+		}
+		// now add it to the list
+		added_plugins.insert(i);
+		// a '*' denotes enabled plugin
+		if(plugins_file_empty) {
+			plugins_file_empty = false;
+			plugins_s << "*" << i;
+		} else {
+			plugins_s << "\n*" << i;
+		}
+	}
 }
 

@@ -207,6 +207,12 @@ std::string utils::to_lower(const std::string& in) {
 	return out;
 }
 
+std::string utils::file_name(const std::string& f_path) {
+	const auto	p_slash = f_path.find_last_of('/');
+	if(p_slash != std::string::npos) return f_path.substr(p_slash+1);
+	return f_path;
+}
+
 std::string utils::get_skyrim_se_data(void) {
 	const char*	LOCATE_SKYRIM_SE_DATE_CMD = "locate --regex \".*steamapps/common/Skyrim Special Edition$\" | head -1";
 	const auto	rc = exec(LOCATE_SKYRIM_SE_DATE_CMD);

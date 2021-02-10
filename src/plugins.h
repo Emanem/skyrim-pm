@@ -21,7 +21,7 @@
 #include "arc.h"
 
 namespace plugins {
-	extern void add_esp_files(const arc::file_names& esp_files, const std::string& basepath, const std::string& plugin_file);
+	extern void add_esp_files(const arc::file_names& esp_files, const std::string& basepath, const std::string& plugins_file);
 }
 
 #endif //_PLUGINS_H_
