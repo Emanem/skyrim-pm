@@ -26,7 +26,8 @@ bool		opt::use_term_style = true,
 		opt::auto_plugins = false,
 		opt::xml_debug = false;
 std::string	opt::skyrim_se_data,
-		opt::skyrim_se_plugins;
+		opt::skyrim_se_plugins,
+		opt::override_data;
 
 namespace {
 	// settings/options management
@@ -44,6 +45,11 @@ namespace {
 			  <<	"                <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>\n"
 			  <<	"--auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option\n"
 			  <<	"                -p (or --plugins) got set to same file name (default disabled)\n"
+			  <<	"-o,--override d Do not write files into Skyrim SE 'Data' directory but in direcotyr 'd'\n"
+			  <<	"                skyrim-pm will instead write symlinks under 'Data' directories and will\n"
+			  <<	"                write a new 'xml' file under 'Data' directory to manage such symlinks.\n"
+			  <<	"                If an existing file is present under 'Data' it will be overwritten by\n"
+			  <<	"                the symlinks and won't be recoverable.\n"
 			  <<	"--log           Print log on std::cerr (default not set)\n"
 			  <<	"--xml-debug     Print xml debug info for ModuleConfig.xml\n"
 			  <<	"--no-colors     Do not display terminal colors/styles\n"
@@ -59,6 +65,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		{"data-ext",		no_argument,	   0,	'x'},
 		{"plugins",		required_argument, 0,	'p'},
 		{"auto-plugins",	no_argument,	   0,	0},
+		{"override",		required_argument, 0,	'o'},
 		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{"xml-debug",		no_argument,	   0,	0},
@@ -69,7 +76,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		// getopt_long stores the option index here
 		int		option_index = 0;
 
-		if(-1 == (c = getopt_long(argc, argv, "hs:xp:", long_options, &option_index)))
+		if(-1 == (c = getopt_long(argc, argv, "hs:xp:o:", long_options, &option_index)))
 			break;
 
 		switch (c) {
@@ -103,6 +110,10 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 
 		case 'p': {
 			opt::skyrim_se_plugins = optarg;
+		}
+
+		case 'o': {
+			opt::override_data = optarg;
 		}
 
 		case '?':

@@ -36,7 +36,7 @@ public:
 		bool extract_modcfg(std::ostream& data_out, const std::string& f_ModuleConfig = "ModuleConfig.xml");
 		bool extract_file(const std::string& fname, const std::string& tgt_filename, file_names* esp_list);
 		size_t extract_dir(const std::string& base_match, const std::string& base_outdir, file_names* esp_list);
-		size_t extract_data(const std::string& base_outdir, file_names* esp_list);
+		size_t extract_data(const std::string& base_outdir, const std::string& ov_base_dir, file_names* esp_list);
 		~file();
 	};
 }

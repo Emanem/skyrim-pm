@@ -60,9 +60,22 @@ int main(int argc, char *argv[]) {
 		} else if (opt::auto_plugins && !opt::skyrim_se_plugins.empty()) {
 			throw std::runtime_error("Both 'Plugins.txt' file and automated search for the same have been specified, please set one only option");
 		}
-		// ensure the path folder is '/' terminated
+		// ensure the path folders are '/' terminated
+		// and properly formatted (override_data is
+		// absolute)
 		if(*opt::skyrim_se_data.rbegin() != '/')
 			opt::skyrim_se_data += '/';
+		if(!opt::override_data.empty()) {
+			if(*opt::override_data.rbegin() != '/')
+				opt::override_data += '/';
+			if(*opt::override_data.begin() != '/') {
+				char	cwd[PATH_MAX];
+				if(!getcwd(cwd, PATH_MAX))
+					throw std::runtime_error("Can't get current directory");
+				opt::override_data = std::string(cwd) + '/' + opt::override_data;
+				LOG << "override_data path supplied not absolute, defaulted to '" << opt::override_data << "'";
+			}
+		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
 			// open archive
@@ -70,13 +83,14 @@ int main(int argc, char *argv[]) {
 			arc::file_names		esp_files;
 			// get and load the ModuleConfig.xml file
 			std::stringstream	sstr;
+			const std::string	ovd = (opt::override_data.empty()) ? "" : opt::override_data + utils::file_name(argv[i]) + '/';
 			if(!a.extract_modcfg(sstr)) {
 				if(opt::data_extract) {
 					std::stringstream	msg;
 					msg	<< "Can't find/extract ModuleConfig.xml from archive '"
 						<< argv[i] << "', proceeding with raw data extraction";
 					std::cout << utils::term::yellow(msg.str()) << std::endl;
-					a.extract_data(opt::skyrim_se_data, &esp_files);
+					a.extract_data(opt::skyrim_se_data, ovd, &esp_files);
 				} else throw std::runtime_error(std::string("Can't find/extract ModuleConfig.xml from archive '") + argv[i] + "'");
 			} else {
 				// parse the XML

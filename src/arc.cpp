@@ -21,6 +21,7 @@
 #include <regex>
 #include <archive_entry.h>
 #include <strings.h>
+#include <unistd.h>
 
 namespace {
 	size_t ci_find(const std::string& s, const std::string& f) {
@@ -192,9 +193,9 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 	return rv;
 }
 
-size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_list) {
+size_t arc::file::extract_data(const std::string& base_outdir, const std::string& ov_base_dir, file_names* esp_list) {
 	size_t			rv = 0;
-	const std::string	act_base_outdir = (base_outdir.empty()) ? "./" : ((*base_outdir.rbegin() == '/') ? base_outdir : base_outdir + "/");
+	const std::string	act_base_outdir	= (ov_base_dir.empty()) ? base_outdir : ov_base_dir;
 	// this will scan through the entire archive,
 	// trying to match/find specific patterns and
 	// extracting those at best of understanding
@@ -211,12 +212,15 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 			continue;
 		std::smatch		m;
 		sse_p_filetype		ft = sse_p_filetype::NONE;
+		std::string		tgt_filename,
+					sym_filename;
 		if((ft = get_file_type(p_name)) != sse_p_filetype::NONE) {
 			++rv;
 			// get the filename and extract to base_outdir
 			// for now preserve original name casing
 			const auto		p_slash = p_name.find_last_of('/');
-			const std::string	tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
+			tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
+			sym_filename = (ov_base_dir.empty()) ? "" : base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
 			raw_extract_file(a_, p_name, tgt_filename);
 			// in case we have loaded an esp
 			// then add it to the list
@@ -225,7 +229,8 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 			}
 		} else if(std::regex_search(p_name, m, data_regex)) {
 			// extract path and make it lowercase
-			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
+			tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
+			sym_filename = (ov_base_dir.empty()) ? "" : base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
 			raw_extract_file(a_, p_name, tgt_filename);
 		} else if(std::regex_search(p_name, m, meshes_regex) ||
 			  std::regex_search(p_name, m, textures_regex) ||
@@ -235,10 +240,23 @@ size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_l
 			// ensure if the first term of match is '/'
 			// to exclude it
 			const size_t		slash_shift = (*(m[0].str().begin()) == '/') ? 1 : 0;
-			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
+			tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
+			sym_filename = (ov_base_dir.empty()) ? "" : base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
 			raw_extract_file(a_, p_name, tgt_filename);
 		} else {
 			LOG << "Unprocessed file [" << p_name << "]";
+		}
+		if(!sym_filename.empty()) {
+			utils::ensure_fname_path(sym_filename);
+			if(symlink(tgt_filename.c_str(), sym_filename.c_str())) {
+				// if symlink already exists, remove and try again
+				if(errno == EEXIST) {
+					remove(sym_filename.c_str());
+					if(symlink(tgt_filename.c_str(), sym_filename.c_str()))
+						throw std::runtime_error(std::string("symlink failed for '") + tgt_filename + "' --> '" + sym_filename + "' [" + std::to_string(errno) + "]");
+				}
+				else throw std::runtime_error(std::string("symlink failed for '") + tgt_filename + "' --> '" + sym_filename + "' [" + std::to_string(errno) + "]");
+			}
 		}
 	}
 	return rv;

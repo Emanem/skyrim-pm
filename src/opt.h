@@ -27,7 +27,8 @@ namespace opt {
 				auto_plugins,
 				xml_debug;
 	extern std::string	skyrim_se_data,
-				skyrim_se_plugins;
+				skyrim_se_plugins,
+				override_data;
 
 	extern int parse_args(int argc, char *argv[], const char *prog, const char *version);
 }
