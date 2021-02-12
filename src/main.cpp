@@ -24,7 +24,7 @@
 #include "plugins.h"
 
 namespace {
-	const char*	VERSION = "0.1.3";
+	const char*	VERSION = "0.2.0";
 }
 
 int main(int argc, char *argv[]) {
@@ -69,6 +69,10 @@ int main(int argc, char *argv[]) {
 			if(*opt::override_data.rbegin() != '/')
 				opt::override_data += '/';
 			if(*opt::override_data.begin() != '/') {
+				// if starting is './', remove it...
+				if(opt::override_data.length() > 2 && (0==opt::override_data.find("./")))
+					opt::override_data = opt::override_data.substr(2);
+
 				char	cwd[PATH_MAX];
 				if(!getcwd(cwd, PATH_MAX))
 					throw std::runtime_error("Can't get current directory");

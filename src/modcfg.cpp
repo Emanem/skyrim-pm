@@ -123,18 +123,21 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 			// in case dst is non empty is supposed to be a fully qualified
 			// file name, relative to 'Data' - skyrim_data_dir already
 			// conatains '/' at the end
-			std::string		tgt_filename = ei.skyrim_data_dir;
+			std::string		tgt_filename = ei.skyrim_data_dir,
+						ovd_filename = ei.override_dir;
 			// if dst is non empty, we should simply append to tgt_filename
 			// otherwise we'll have to find the filename
 			// and concatenate
 			if(!dst.empty()) {
 				tgt_filename += dst;
+				if(!ovd_filename.empty()) ovd_filename += dst;
 			} else {
 				const auto	p_slash = src.find_last_of('/');
 				tgt_filename += src.substr((p_slash == std::string::npos) ? 0 : p_slash+1);
+				if(!ovd_filename.empty()) ovd_filename += src.substr((p_slash == std::string::npos) ? 0 : p_slash+1);
 			}
 			// now invoke the file extraction/copy
-			a.extract_file(src, tgt_filename, ei.esp_files);
+			a.extract_file(src, tgt_filename, ovd_filename, ei.esp_files);
 		}
 	}
 }

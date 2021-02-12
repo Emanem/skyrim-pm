@@ -152,8 +152,11 @@ bool arc::file::extract_modcfg(std::ostream& data_out, const std::string& f_Modu
 	return rv;
 }
 
-bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename, file_names* esp_list) {
+bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename, const std::string& ov_filename, file_names* esp_list) {
 	LOG << "Extracting file [" << fname << "] as file [" << tgt_filename << "]";
+	if(!ov_filename.empty()) {
+		LOG << "\tOverride [" << ov_filename << "]";
+	}
 	bool			rv = false;
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
@@ -161,11 +164,14 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 		size_t			pos = std::string::npos;
 		if((pos = ci_find(p_name, fname)) != std::string::npos) {
 			rv = true;
-			raw_extract_file(a_, p_name, tgt_filename);
+			raw_extract_file(a_, p_name, ov_filename.empty() ? tgt_filename : ov_filename);
 			// if we need to report esp files
 			// and the file is and esp, then report it
 			if(esp_list && (sse_p_filetype::ESP == get_file_type(tgt_filename))) {
 				esp_list->push_back(tgt_filename);
+			}
+			if(!ov_filename.empty()) {
+				add_symlink(tgt_filename, ov_filename);
 			}
 			break;
 		}
@@ -177,6 +183,9 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 
 size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir, const std::string& ov_base_dir, file_names* esp_list) {
 	LOG << "Extracting path [" << base_match << "] into directory [" << base_outdir << "]";
+	if(!ov_base_dir.empty()) {
+		LOG << "\tOverride [" << ov_base_dir << "]";
+	}
 	size_t	rv = 0;
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
@@ -211,6 +220,9 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 }
 
 size_t arc::file::extract_data(const std::string& base_outdir, const std::string& ov_base_dir, file_names* esp_list) {
+	if(!ov_base_dir.empty()) {
+		LOG << "\tOverride [" << ov_base_dir << "]";
+	}
 	size_t			rv = 0;
 	const std::string	act_base_outdir	= (ov_base_dir.empty()) ? base_outdir : ov_base_dir;
 	// this will scan through the entire archive,
