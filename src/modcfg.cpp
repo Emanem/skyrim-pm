@@ -111,7 +111,7 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 				dst += '/';
 			}
 			// now invoke the dir extraction/copy
-			a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst));
+			a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst), ei.esp_files);
 		} else if(std::string("file") == (const char*)cur_node->name) {
 			const xc		x_src(xmlGetProp(cur_node, (const xmlChar*)"source")),
 						x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));
@@ -133,7 +133,7 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 				tgt_filename += src.substr((p_slash == std::string::npos) ? 0 : p_slash+1);
 			}
 			// now invoke the file extraction/copy
-			a.extract_file(src, tgt_filename);
+			a.extract_file(src, tgt_filename, ei.esp_files);
 		}
 	}
 }

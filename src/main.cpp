@@ -21,9 +21,10 @@
 #include "modcfg.h"
 #include "utils.h"
 #include "opt.h"
+#include "plugins.h"
 
 namespace {
-	const char*	VERSION = "0.1.2";
+	const char*	VERSION = "0.1.3";
 }
 
 int main(int argc, char *argv[]) {
@@ -47,6 +48,18 @@ int main(int argc, char *argv[]) {
 				LOG << "Skyrim SE Data directory found at '" << opt::skyrim_se_data << "'";
 			}
 		}
+		// setup the plugins file
+		if(opt::auto_plugins && opt::skyrim_se_plugins.empty()) {
+			LOG << "Skyrim SE Plugins.txt not set, locating it";
+			opt::skyrim_se_plugins = utils::get_skyrim_se_plugins();
+			if(opt::skyrim_se_plugins.empty())
+				throw std::runtime_error("Can't automatically find 'Plugins.txt', please specify it manually");
+			else {
+				LOG << "Skyrim SE Plugins.txt found at '" << opt::skyrim_se_plugins << "'";
+			}
+		} else if (opt::auto_plugins && !opt::skyrim_se_plugins.empty()) {
+			throw std::runtime_error("Both 'Plugins.txt' file and automated search for the same have been specified, please set one only option");
+		}
 		// ensure the path folder is '/' terminated
 		if(*opt::skyrim_se_data.rbegin() != '/')
 			opt::skyrim_se_data += '/';
@@ -54,6 +67,7 @@ int main(int argc, char *argv[]) {
 		for(int i = mod_idx; i < argc; ++i) {
 			// open archive
 			arc::file		a(argv[i]);
+			arc::file_names		esp_files;
 			// get and load the ModuleConfig.xml file
 			std::stringstream	sstr;
 			if(!a.extract_modcfg(sstr)) {
@@ -62,16 +76,20 @@ int main(int argc, char *argv[]) {
 					msg	<< "Can't find/extract ModuleConfig.xml from archive '"
 						<< argv[i] << "', proceeding with raw data extraction";
 					std::cout << utils::term::yellow(msg.str()) << std::endl;
-					a.extract_data(opt::skyrim_se_data);
-					continue;
+					a.extract_data(opt::skyrim_se_data, &esp_files);
 				} else throw std::runtime_error(std::string("Can't find/extract ModuleConfig.xml from archive '") + argv[i] + "'");
+			} else {
+				// parse the XML
+				modcfg::parser		mcp(sstr.str());
+				if(opt::xml_debug)
+					mcp.print_tree(std::cout);
+				// execute it
+				mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data, &esp_files });
 			}
-			// parse the XML
-			modcfg::parser		mcp(sstr.str());
-			if(opt::xml_debug)
-				mcp.print_tree(std::cout);
-			// execute it
-			mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data });
+			// manage ESP list
+			if(!opt::skyrim_se_plugins.empty()) {
+				plugins::add_esp_files(esp_files, opt::skyrim_se_data, opt::skyrim_se_plugins);
+			}
 		}
 		// cleanup the xml2 library structures
 		xmlCleanupParser();

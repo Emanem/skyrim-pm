@@ -15,22 +15,14 @@
     along with skyrim-pm.  If not, see <https://www.gnu.org/licenses/>.
  * */
 
-#ifndef _OPT_H_
-#define _OPT_H_
+#ifndef _PLUGINS_H_
+#define _PLUGINS_H_
 
-#include <string>
+#include "arc.h"
 
-namespace opt {
-	extern bool		use_term_style,
-				log_enabled,
-				data_extract,
-				auto_plugins,
-				xml_debug;
-	extern std::string	skyrim_se_data,
-				skyrim_se_plugins;
-
-	extern int parse_args(int argc, char *argv[], const char *prog, const char *version);
+namespace plugins {
+	extern void add_esp_files(const arc::file_names& esp_files, const std::string& basepath, const std::string& plugins_file);
 }
 
-#endif //_OPT_H_
+#endif //_PLUGINS_H_
 

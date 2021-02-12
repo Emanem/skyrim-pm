@@ -30,6 +30,7 @@ namespace modcfg {
 public:
 		struct execute_info {
 			std::string	skyrim_data_dir;
+			arc::file_names	*esp_files;
 		};
 private:
 		const std::string	s_;

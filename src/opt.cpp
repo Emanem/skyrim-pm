@@ -23,18 +23,27 @@
 bool		opt::use_term_style = true,
 		opt::log_enabled = false,
 		opt::data_extract = false,
+		opt::auto_plugins = false,
 		opt::xml_debug = false;
-std::string	opt::skyrim_se_data;
+std::string	opt::skyrim_se_data,
+		opt::skyrim_se_plugins;
 
 namespace {
 	// settings/options management
 	void print_help(const char *prog, const char *version) {
 		std::cerr <<	"Usage: " << prog << " [options] <mod1.7z> <mod2.rar> <mod3...>\nExecutes skyrim-pm " << version << "\n\n"
-			  <<	"-s,--sse-data   Use specified Skyrim SE Data directory. If not set, skyrim-pm\n"
+			  <<	"-s,--sse-data d Use specified Skyrim SE Data directory (d). If not set, skyrim-pm\n"
 			  <<    "                will try to invoke 'locate' to find it and use the first entry\n"
 			  <<	"-x,--data-ext   Try to extract the archive no matter what even when ModuleConfig.xml\n"
 			  <<	"                can't be found. In this case all files which match a given criteria\n"
 			  <<	"                will be extracted and saved under the specified Data directory\n"
+			  <<    "-p,--plugins f  Use specified file (f) as 'Plugins.txt' file; this parameter will\n"
+			  <<	"                imply automatically modifying such file to enabling ESP files without\n"
+			  <<	"                having to modify and use the 'load order' in-game menu; usually this\n"
+			  <<	"                file would be located under:\n"
+			  <<	"                <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>\n"
+			  <<	"--auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option\n"
+			  <<	"                -p (or --plugins) got set to same file name (default disabled)\n"
 			  <<	"--log           Print log on std::cerr (default not set)\n"
 			  <<	"--xml-debug     Print xml debug info for ModuleConfig.xml\n"
 			  <<	"--no-colors     Do not display terminal colors/styles\n"
@@ -48,6 +57,8 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		{"help",		no_argument,	   0,	'h'},
 		{"sse-data",		required_argument, 0,	's'},
 		{"data-ext",		no_argument,	   0,	'x'},
+		{"plugins",		required_argument, 0,	'p'},
+		{"auto-plugins",	no_argument,	   0,	0},
 		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{"xml-debug",		no_argument,	   0,	0},
@@ -58,7 +69,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		// getopt_long stores the option index here
 		int		option_index = 0;
 
-		if(-1 == (c = getopt_long(argc, argv, "hs:x", long_options, &option_index)))
+		if(-1 == (c = getopt_long(argc, argv, "hs:xp:", long_options, &option_index)))
 			break;
 
 		switch (c) {
@@ -72,6 +83,8 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 				opt::log_enabled = true;
 			} else if(!std::strcmp("xml-debug", long_options[option_index].name)) {
 				opt::xml_debug = true;
+			} else if(!std::strcmp("auto-plugins", long_options[option_index].name)) {
+				opt::auto_plugins = true;
 			}
 		} break;
 
@@ -87,6 +100,10 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		case 'x': {
 			opt::data_extract = true;
 		} break;
+
+		case 'p': {
+			opt::skyrim_se_plugins = optarg;
+		}
 
 		case '?':
 		break;

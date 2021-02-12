@@ -207,15 +207,29 @@ std::string utils::to_lower(const std::string& in) {
 	return out;
 }
 
+std::string utils::file_name(const std::string& f_path) {
+	const auto	p_slash = f_path.find_last_of('/');
+	if(p_slash != std::string::npos) return f_path.substr(p_slash+1);
+	return f_path;
+}
+
 std::string utils::get_skyrim_se_data(void) {
-	const char*	LOCATE_SKYRIM_SE_DATE_CMD = "locate --regex \".*steamapps/common/Skyrim Special Edition$\" | head -1";
-	const auto	rc = exec(LOCATE_SKYRIM_SE_DATE_CMD);
+	const char*	LOCATE_SKYRIM_SE_DATA_CMD = "locate --regex \".*steamapps/common/Skyrim Special Edition$\" | head -1";
+	const auto	rc = exec(LOCATE_SKYRIM_SE_DATA_CMD);
 	// rc may be with newline, trim it
 	return trim(rc) + "/Data";
 }
 
+std::string utils::get_skyrim_se_plugins(void) {
+	const char*	LOCATE_SKYRIM_SE_PLUGINS_CMD = "locate --regex \".*Local Settings/Application Data/Skyrim Special Edition/Plugins.txt$\" | head -1";
+	const auto	rc = exec(LOCATE_SKYRIM_SE_PLUGINS_CMD);
+	// rc may be with newline, trim it
+	return trim(rc);
+}
+
+
 void utils::term::enable(void) {
-	// shoudl check we can do this
+	// should check we can do this
 	term_enabled = true;
 }
 

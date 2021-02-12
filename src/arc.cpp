@@ -31,6 +31,49 @@ namespace {
 		if(rv != s.end()) return rv - s.begin();
 		return std::string::npos;
 	}
+
+	void raw_extract_file(struct archive *a_, const std::string& p_name, const std::string& tgt_filename) {
+		utils::ensure_fname_path(tgt_filename);
+		std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
+		const static size_t	buflen = 2048;
+		char			buf[buflen];
+		la_ssize_t		rd = 0,
+					total_sz = 0;
+		while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0){
+			if(0 == rd)
+				break;
+			of.write(&buf[0], rd);
+			total_sz += rd;
+		}
+		if(rd < 0)
+			throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
+		LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
+	}
+
+	// enum to classify if a file type is 
+	// used for specific plugin purposes
+	// by Skyrim SE - usually
+	// those files should go into data directory
+	enum sse_p_filetype {
+		NONE = 0,
+		ESP,
+		BSA,
+		INI
+	};
+
+	const sse_p_filetype get_file_type(const std::string& f_name) {
+		const static std::regex	bsa_regex("\\.bsa$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+					esp_regex("\\.esp$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
+					ini_regex("\\.ini$" , std::regex_constants::ECMAScript | std::regex_constants::icase);
+		if(std::regex_search(f_name, bsa_regex)) {
+			return sse_p_filetype::BSA;
+		} else if(std::regex_search(f_name, esp_regex)) {
+			return sse_p_filetype::ESP;
+		} else if(std::regex_search(f_name, ini_regex)) {
+			return sse_p_filetype::INI;
+		}
+		return sse_p_filetype::NONE;
+	}
 }
 
 // unforutnately there is no way
@@ -95,7 +138,7 @@ bool arc::file::extract_modcfg(std::ostream& data_out, const std::string& f_Modu
 	return rv;
 }
 
-bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename) {
+bool arc::file::extract_file(const std::string& fname, const std::string& tgt_filename, file_names* esp_list) {
 	LOG << "Extracting file [" << fname << "] as file [" << tgt_filename << "]";
 	bool			rv = false;
 	struct archive_entry	*entry = 0;
@@ -104,21 +147,12 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 		size_t			pos = std::string::npos;
 		if((pos = ci_find(p_name, fname)) != std::string::npos) {
 			rv = true;
-			utils::ensure_fname_path(tgt_filename);
-			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
-			const static size_t	buflen = 2048;
-			char			buf[buflen];
-			la_ssize_t		rd = 0,
-						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
-				if(0 == rd)
-					break;
-				of.write(&buf[0], rd);
-				total_sz += rd;
+			raw_extract_file(a_, p_name, tgt_filename);
+			// if we need to report esp files
+			// and the file is and esp, then report it
+			if(esp_list && (sse_p_filetype::ESP == get_file_type(tgt_filename))) {
+				esp_list->push_back(tgt_filename);
 			}
-			if(rd < 0)
-				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + fname + "' from archive").c_str());
-			LOG << "File [" << fname << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
 			break;
 		}
 	}
@@ -127,7 +161,7 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 	return rv;
 }
 
-size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir) {
+size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir, file_names* esp_list) {
 	LOG << "Extracting path [" << base_match << "] into directory [" << base_outdir << "]";
 	size_t	rv = 0;
 	struct archive_entry	*entry = 0;
@@ -145,21 +179,12 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 			// and if rhs starts with '/' we shouldn't
 			// include it of course
 			const std::string	tgt_filename = base_outdir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs);
-			utils::ensure_fname_path(tgt_filename);
-			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
-			const static size_t	buflen = 2048;
-			char			buf[buflen];
-			la_ssize_t		rd = 0,
-						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0) {
-				if(0 == rd)
-					break;
-				of.write(&buf[0], rd);
-				total_sz += rd;
+			raw_extract_file(a_, p_name, tgt_filename);
+			// if we need to report esp files
+			// and the file is and esp, then report it
+			if(esp_list && (sse_p_filetype::ESP == get_file_type(tgt_filename))) {
+				esp_list->push_back(tgt_filename);
 			}
-			if(rd < 0)
-				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
-			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
 		}
 	}
 	// reset the archive handle
@@ -167,65 +192,51 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 	return rv;
 }
 
-size_t arc::file::extract_data(const std::string& base_outdir) {
+size_t arc::file::extract_data(const std::string& base_outdir, file_names* esp_list) {
 	size_t			rv = 0;
 	const std::string	act_base_outdir = (base_outdir.empty()) ? "./" : ((*base_outdir.rbegin() == '/') ? base_outdir : base_outdir + "/");
 	// this will scan through the entire archive,
 	// trying to match/find specific patterns and
 	// extracting those at best of understanding
-	const std::regex 	bsa_regex(".bsa$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
-				esp_regex(".esp$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
-				ini_regex(".ini$" , std::regex_constants::ECMAScript | std::regex_constants::icase),
-				data_regex("(^|/)data/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+	const static std::regex	data_regex("(^|/)data/", std::regex_constants::ECMAScript | std::regex_constants::icase),
 				meshes_regex("(^|/)meshes/", std::regex_constants::ECMAScript | std::regex_constants::icase),
-				textures_regex("(^|/)textures/", std::regex_constants::ECMAScript | std::regex_constants::icase);
+				textures_regex("(^|/)textures/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+				sound_regex("(^|/)sound/", std::regex_constants::ECMAScript | std::regex_constants::icase),
+				interface_regex("(^|/)interface/", std::regex_constants::ECMAScript | std::regex_constants::icase);
 	struct archive_entry	*entry = 0;
 	while(archive_read_next_header(a_, &entry) == ARCHIVE_OK) {
 		const std::string	p_name = utils::path2unix(archive_entry_pathname(entry));
 		// skip empty records or paths
 		if(p_name.empty() || *p_name.rbegin() == '/')
 			continue;
-		// simple lambda to extract a file
-		auto fn_extract_file = [&p_name, this](const std::string& tgt_filename) -> void {
-			utils::ensure_fname_path(tgt_filename);
-			std::ofstream		of(tgt_filename.c_str(), std::ios_base::binary);
-			const static size_t	buflen = 2048;
-			char			buf[buflen];
-			la_ssize_t		rd = 0,
-						total_sz = 0;
-			while((rd = archive_read_data(a_, &buf[0], buflen)) >= 0){
-				if(0 == rd)
-					break;
-				of.write(&buf[0], rd);
-				total_sz += rd;
-			}
-			if(rd < 0)
-				throw std::runtime_error((std::string("Corrupt stream, can't extract '") + p_name + "' from archive").c_str());
-			LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
-		};
 		std::smatch		m;
-
-		if(std::regex_search(p_name, bsa_regex) ||
-		   std::regex_search(p_name, esp_regex) ||
-		   std::regex_search(p_name, ini_regex)) {
+		sse_p_filetype		ft = sse_p_filetype::NONE;
+		if((ft = get_file_type(p_name)) != sse_p_filetype::NONE) {
 			++rv;
 			// get the filename and extract to base_outdir
 			// for now preserve original name casing
 			const auto		p_slash = p_name.find_last_of('/');
 			const std::string	tgt_filename = act_base_outdir + ((p_slash != std::string::npos) ? p_name.substr(p_slash+1) : p_name);
-			fn_extract_file(tgt_filename);
+			raw_extract_file(a_, p_name, tgt_filename);
+			// in case we have loaded an esp
+			// then add it to the list
+			if(esp_list && (ft == sse_p_filetype::ESP)) {
+				esp_list->push_back(tgt_filename);
+			}
 		} else if(std::regex_search(p_name, m, data_regex)) {
 			// extract path and make it lowercase
 			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + m.length()));
-			fn_extract_file(tgt_filename);
+			raw_extract_file(a_, p_name, tgt_filename);
 		} else if(std::regex_search(p_name, m, meshes_regex) ||
-			  std::regex_search(p_name, m, textures_regex)) {
+			  std::regex_search(p_name, m, textures_regex) ||
+			  std::regex_search(p_name, m, sound_regex) ||
+			  std::regex_search(p_name, m, interface_regex)) {
 			// extract path and make it lowercase
 			// ensure if the first term of match is '/'
 			// to exclude it
 			const size_t		slash_shift = (*(m[0].str().begin()) == '/') ? 1 : 0;
 			const auto		tgt_filename = act_base_outdir + utils::to_lower(p_name.substr(m.position() + slash_shift));
-			fn_extract_file(tgt_filename);
+			raw_extract_file(a_, p_name, tgt_filename);
 		} else {
 			LOG << "Unprocessed file [" << p_name << "]";
 		}
