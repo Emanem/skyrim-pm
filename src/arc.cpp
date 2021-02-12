@@ -51,6 +51,19 @@ namespace {
 		LOG << "File [" << p_name << "] extracted to [" << tgt_filename << "] (" << total_sz << ")";
 	}
 
+	void add_symlink(const std::string& sym_filename, const std::string& tgt_filename) {
+		utils::ensure_fname_path(sym_filename);
+		if(symlink(tgt_filename.c_str(), sym_filename.c_str())) {
+			// if symlink already exists, remove and try again
+			if(errno == EEXIST) {
+				remove(sym_filename.c_str());
+				if(symlink(tgt_filename.c_str(), sym_filename.c_str()))
+					throw std::runtime_error(std::string("symlink failed for '") + tgt_filename + "' --> '" + sym_filename + "' [" + std::to_string(errno) + "]");
+			}
+			else throw std::runtime_error(std::string("symlink failed for '") + tgt_filename + "' --> '" + sym_filename + "' [" + std::to_string(errno) + "]");
+		}
+	}
+
 	// enum to classify if a file type is 
 	// used for specific plugin purposes
 	// by Skyrim SE - usually
@@ -162,7 +175,7 @@ bool arc::file::extract_file(const std::string& fname, const std::string& tgt_fi
 	return rv;
 }
 
-size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir, file_names* esp_list) {
+size_t arc::file::extract_dir(const std::string& base_match, const std::string& base_outdir, const std::string& ov_base_dir, file_names* esp_list) {
 	LOG << "Extracting path [" << base_match << "] into directory [" << base_outdir << "]";
 	size_t	rv = 0;
 	struct archive_entry	*entry = 0;
@@ -179,12 +192,16 @@ size_t arc::file::extract_dir(const std::string& base_match, const std::string& 
 			// outdir should terminate with '/'
 			// and if rhs starts with '/' we shouldn't
 			// include it of course
-			const std::string	tgt_filename = base_outdir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs);
-			raw_extract_file(a_, p_name, tgt_filename);
+			const std::string	tgt_filename = base_outdir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs),
+						ovd_filename = ov_base_dir.empty() ? "" : (ov_base_dir + ((*rhs.begin() == '/') ? rhs.substr(1) : rhs));
+			raw_extract_file(a_, p_name, ovd_filename.empty() ? tgt_filename : ovd_filename);
 			// if we need to report esp files
 			// and the file is and esp, then report it
 			if(esp_list && (sse_p_filetype::ESP == get_file_type(tgt_filename))) {
 				esp_list->push_back(tgt_filename);
+			}
+			if(!ovd_filename.empty()) {
+				add_symlink(tgt_filename, ovd_filename);
 			}
 		}
 	}
@@ -247,16 +264,7 @@ size_t arc::file::extract_data(const std::string& base_outdir, const std::string
 			LOG << "Unprocessed file [" << p_name << "]";
 		}
 		if(!sym_filename.empty()) {
-			utils::ensure_fname_path(sym_filename);
-			if(symlink(tgt_filename.c_str(), sym_filename.c_str())) {
-				// if symlink already exists, remove and try again
-				if(errno == EEXIST) {
-					remove(sym_filename.c_str());
-					if(symlink(tgt_filename.c_str(), sym_filename.c_str()))
-						throw std::runtime_error(std::string("symlink failed for '") + tgt_filename + "' --> '" + sym_filename + "' [" + std::to_string(errno) + "]");
-				}
-				else throw std::runtime_error(std::string("symlink failed for '") + tgt_filename + "' --> '" + sym_filename + "' [" + std::to_string(errno) + "]");
-			}
+			add_symlink(sym_filename, tgt_filename);
 		}
 	}
 	return rv;

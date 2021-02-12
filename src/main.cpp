@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
 				if(opt::xml_debug)
 					mcp.print_tree(std::cout);
 				// execute it
-				mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data, &esp_files });
+				mcp.execute(std::cout, std::cin, a, { opt::skyrim_se_data, ovd, &esp_files });
 			}
 			// manage ESP list
 			if(!opt::skyrim_se_plugins.empty()) {

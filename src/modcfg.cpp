@@ -111,7 +111,8 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 				dst += '/';
 			}
 			// now invoke the dir extraction/copy
-			a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst), ei.esp_files);
+			const std::string	ovd = ei.override_dir.empty() ? "" : (ei.override_dir + (dst.empty() ? "" : dst));
+			a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst), ovd, ei.esp_files);
 		} else if(std::string("file") == (const char*)cur_node->name) {
 			const xc		x_src(xmlGetProp(cur_node, (const xmlChar*)"source")),
 						x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));

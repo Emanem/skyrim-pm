@@ -29,7 +29,8 @@ namespace modcfg {
 	class parser {
 public:
 		struct execute_info {
-			std::string	skyrim_data_dir;
+			std::string	skyrim_data_dir,
+					override_dir;
 			arc::file_names	*esp_files;
 		};
 private:
