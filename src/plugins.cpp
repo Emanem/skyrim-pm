@@ -53,7 +53,7 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 	// now open the file in w mode
 	// and add the plugins, enabling those
 	std::set<std::string>		added_plugins;
-	std::ofstream			plugins_s(plugins_file);
+	std::ofstream			plugins_s(plugins_file, std::ios_base::app);
 	if(!plugins_s)
 		throw std::runtime_error(std::string("Can't open plugins file '") + plugins_file + "' for updating it");
 	for(const auto& i : r_esp_names) {
