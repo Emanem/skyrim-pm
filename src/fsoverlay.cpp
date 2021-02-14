@@ -20,9 +20,13 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xmlwriter.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <vector>
 #include <deque>
 #include <memory>
+#include <cstring>
 
 #define ISO_ENCODING "ISO-8859-1"
 
@@ -54,18 +58,45 @@ namespace {
 		xmlTextWriterPtr w;
 
 		xel_w(xmlTextWriterPtr w_, const std::string& n) : w(w_) {
-			if(!xmlTextWriterStartElement(w, (const xmlChar*)n.c_str()))
+			if(0 > xmlTextWriterStartElement(w, (const xmlChar*)n.c_str()))
 				throw std::runtime_error("Can't udpate xml fsconfig: xmlTextWriterStartElement");
 		}
 
 		void add_attr_txt(const std::string& a, const std::string& v) {
-			xmlTextWriterWriteAttribute(w, (const xmlChar*)a.c_str(), (const xmlChar*)v.c_str());
+			if(0 > xmlTextWriterWriteAttribute(w, (const xmlChar*)a.c_str(), (const xmlChar*)v.c_str()))
+				throw std::runtime_error("Can't udpate xml fsconfig: xmlTextWriterWriteAttribute");
 		}
 
 		~xel_w() {
 			xmlTextWriterEndElement(w);
 		}
 	};
+
+	void rec_dir_scan(const std::string& d_name, const std::string& base_data, const std::string& base_plugin, p_data& d_plugin) {
+		std::unique_ptr<DIR, int(*)(DIR*)>	d(opendir(d_name.c_str()), closedir);
+		if(!d)
+			throw std::runtime_error(std::string("Can't open '") + d_name + "' to scan for symlinks");
+		struct dirent	*de = 0;
+		while((de = readdir(d.get()))) {
+			if(!strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+				continue;
+			if(DT_DIR == de->d_type) {
+				rec_dir_scan((std::string(d_name) + '/' + de->d_name).c_str(), base_data, base_plugin, d_plugin);
+			} else if(DT_LNK == de->d_type) {
+				// if it's a link, get the link
+				// and ensure the basepath is
+				// as expected
+				char			r_file[1024];
+				ssize_t			r_sz = -1;
+				const std::string	sym_name = std::string(d_name) + '/' + de->d_name;
+				if((r_sz = readlink(sym_name.c_str(), r_file, sizeof(r_file)-1)) != -1)
+					r_file[r_sz] = '\0';
+				if(r_file == strstr(r_file, base_plugin.c_str())) {
+					d_plugin.files.push_back({r_file, sym_name.substr(base_data.length()+1)});
+				}
+			}
+		}
+	}
 }
 
 void fso::load_xml(const std::string& f) {
@@ -111,6 +142,13 @@ void fso::load_xml(const std::string& f) {
 	}
 }
 
+void fso::scan_plugin(const std::string& p_name, const std::string& pbase, const std::string& data_dir) {
+	p_data	d;
+	d.p_name = p_name;
+	rec_dir_scan(data_dir, data_dir, pbase, d);
+	PLUGINS_LIST.emplace_back(d);
+}
+
 void fso::update_xml(const std::string& f) {
 	std::unique_ptr<xmlDoc, void (*)(xmlDocPtr)>			dp(0, xmlFreeDoc);
 	xmlDocPtr							doc = 0;
@@ -118,7 +156,7 @@ void fso::update_xml(const std::string& f) {
 	if(!w)
 		throw std::runtime_error("Can't initialize xml writer");
 	dp.reset(doc);
-	if(!xmlTextWriterStartDocument(w.get(), NULL, ISO_ENCODING, NULL))
+	if(0 > xmlTextWriterStartDocument(w.get(), NULL, ISO_ENCODING, NULL))
 		throw std::runtime_error("Can't udpate xml fsconfig: xmlTextWriterStartDocument");
 	// start with root element
 	// it's the first one!
@@ -134,5 +172,7 @@ void fso::update_xml(const std::string& f) {
 			}
 		}
 	}
+	if(0 > xmlSaveFileEnc(f.c_str(), dp.get(), ISO_ENCODING))
+		throw std::runtime_error("Can't update xml fsconfig: xmlSaveFileEnc");
 }
 

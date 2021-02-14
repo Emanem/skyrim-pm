@@ -22,9 +22,11 @@
 #include "utils.h"
 #include "opt.h"
 #include "plugins.h"
+#include "fsoverlay.h"
 
 namespace {
-	const char*	VERSION = "0.2.0";
+	const char	*VERSION = "0.2.0",
+			*FSO_XML = "skyrim-pm-fso.xml";
 }
 
 int main(int argc, char *argv[]) {
@@ -63,6 +65,7 @@ int main(int argc, char *argv[]) {
 		// ensure the path folders are '/' terminated
 		// and properly formatted (override_data is
 		// absolute)
+		std::string	FSO_XML_PATH;
 		if(*opt::skyrim_se_data.rbegin() != '/')
 			opt::skyrim_se_data += '/';
 		if(!opt::override_data.empty()) {
@@ -79,6 +82,9 @@ int main(int argc, char *argv[]) {
 				opt::override_data = std::string(cwd) + '/' + opt::override_data;
 				LOG << "override_data path supplied not absolute, defaulted to '" << opt::override_data << "'";
 			}
+			FSO_XML_PATH = opt::skyrim_se_data + FSO_XML;
+			// setup the plugins
+			fso::load_xml(FSO_XML_PATH);
 		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
@@ -108,6 +114,14 @@ int main(int argc, char *argv[]) {
 			if(!opt::skyrim_se_plugins.empty()) {
 				plugins::add_esp_files(esp_files, opt::skyrim_se_data, opt::skyrim_se_plugins);
 			}
+			// add to fso in case
+			if(!ovd.empty()) {
+				fso::scan_plugin(argv[i], ovd, opt::skyrim_se_data);
+			}
+		}
+		// in case we have overrides, update xml
+		if(!opt::override_data.empty()) {
+			fso::update_xml(FSO_XML_PATH);
 		}
 		// cleanup the xml2 library structures
 		xmlCleanupParser();
