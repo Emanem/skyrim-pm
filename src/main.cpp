@@ -88,6 +88,15 @@ int main(int argc, char *argv[]) {
 		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
+			// in case we have override data
+			// check plugin is not already setup
+			if(!opt::override_data.empty() && fso::check_plugin(utils::file_name(argv[i]))) {
+				std::stringstream	sstr;
+				sstr	<< "Warning: plugin '" << utils::file_name(argv[i]) << "' already exists "
+					<< "in list of managed plugins, skipping it";
+				std::cout << utils::term::yellow(sstr.str()) << std::endl;
+				continue;
+			}
 			// open archive
 			arc::file		a(argv[i]);
 			arc::file_names		esp_files;
@@ -116,7 +125,7 @@ int main(int argc, char *argv[]) {
 			}
 			// add to fso in case
 			if(!ovd.empty()) {
-				fso::scan_plugin(argv[i], ovd, opt::skyrim_se_data);
+				fso::scan_plugin(utils::file_name(argv[i]), ovd, opt::skyrim_se_data);
 			}
 		}
 		// in case we have overrides, update xml

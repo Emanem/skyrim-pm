@@ -27,6 +27,7 @@
 #include <deque>
 #include <memory>
 #include <cstring>
+#include <fstream>
 
 #define ISO_ENCODING "ISO-8859-1"
 
@@ -100,7 +101,15 @@ namespace {
 }
 
 void fso::load_xml(const std::string& f) {
-	std::unique_ptr<xmlDoc, void (*)(xmlDoc*)>	doc(xmlReadMemory(f.c_str(), f.length(), "noname.xml", NULL, 0), xmlFreeDoc);
+	LOG << "Trying to load fsoverlay config '" << f << "'";
+	// check file exists first
+	{
+		std::ifstream	istr(f);
+		if(!istr)
+			return;
+	}
+
+	std::unique_ptr<xmlDoc, void (*)(xmlDoc*)>	doc(xmlReadFile(f.c_str(), NULL, 0), xmlFreeDoc);
 	if(!doc)
 		throw std::runtime_error("Can't parse XML of fsoverlay config");
 	// structure of this XML is
@@ -142,6 +151,14 @@ void fso::load_xml(const std::string& f) {
 	}
 }
 
+bool fso::check_plugin(const std::string& p_name) {
+	for(const auto& i : PLUGINS_LIST) {
+		if(i.p_name == p_name)
+			return true;
+	}
+	return false;
+}
+
 void fso::scan_plugin(const std::string& p_name, const std::string& pbase, const std::string& data_dir) {
 	p_data	d;
 	d.p_name = p_name;
@@ -150,6 +167,7 @@ void fso::scan_plugin(const std::string& p_name, const std::string& pbase, const
 }
 
 void fso::update_xml(const std::string& f) {
+	LOG << "Updating fsoverlay config '" << f << "'";
 	std::unique_ptr<xmlDoc, void (*)(xmlDocPtr)>			dp(0, xmlFreeDoc);
 	xmlDocPtr							doc = 0;
 	std::unique_ptr<xmlTextWriter, void (*)(xmlTextWriterPtr)>	w(xmlNewTextWriterDoc(&doc, 0), xmlFreeTextWriter);
@@ -171,7 +189,9 @@ void fso::update_xml(const std::string& f) {
 				entry.add_attr_txt(A_DPATH, e.sym_file);
 			}
 		}
+		xmlTextWriterEndDocument(w.get());
 	}
+	utils::ensure_fname_path(f);
 	if(0 > xmlSaveFileEnc(f.c_str(), dp.get(), ISO_ENCODING))
 		throw std::runtime_error("Can't update xml fsconfig: xmlSaveFileEnc");
 }
