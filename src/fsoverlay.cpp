@@ -16,10 +16,15 @@
  * */
 
 #include "fsoverlay.h"
+#include "utils.h"
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libxml/xmlwriter.h>
 #include <vector>
 #include <deque>
+#include <memory>
+
+#define ISO_ENCODING "ISO-8859-1"
 
 namespace {
 	struct f_data {
@@ -33,11 +38,101 @@ namespace {
 	};
 
 	typedef std::deque<p_data>	p_list;
+
+	p_list				PLUGINS_LIST;
+
+	typedef utils::XmlCharHolder	xc;
+
+	const std::string		N_ROOT_CFG("skyrim-pm-fsoverlay-config"),
+					N_PLUGIN("plugin"),
+					N_ENTRY("entry"),
+					A_NAME("name"),
+					A_FSPATH("fspath"),
+					A_DPATH("datapath");
+
+	struct xel_w {
+		xmlTextWriterPtr w;
+
+		xel_w(xmlTextWriterPtr w_, const std::string& n) : w(w_) {
+			if(!xmlTextWriterStartElement(w, (const xmlChar*)n.c_str()))
+				throw std::runtime_error("Can't udpate xml fsconfig: xmlTextWriterStartElement");
+		}
+
+		void add_attr_txt(const std::string& a, const std::string& v) {
+			xmlTextWriterWriteAttribute(w, (const xmlChar*)a.c_str(), (const xmlChar*)v.c_str());
+		}
+
+		~xel_w() {
+			xmlTextWriterEndElement(w);
+		}
+	};
 }
 
 void fso::load_xml(const std::string& f) {
+	std::unique_ptr<xmlDoc, void (*)(xmlDoc*)>	doc(xmlReadMemory(f.c_str(), f.length(), "noname.xml", NULL, 0), xmlFreeDoc);
+	if(!doc)
+		throw std::runtime_error("Can't parse XML of fsoverlay config");
+	// structure of this XML is
+	// skyrim-pm-fsoverlay-config
+	// +-- plugin (name=...)
+	// |   +-- entry (fspath=... datapath=...)
+	// |   +-- entry (fspath=... datapath=...)
+	// +-- plugin (name=...)
+	//     +-- entry (fspath=... datapath=...)
+	auto	re = xmlDocGetRootElement(doc.get());
+	if(N_ROOT_CFG != (const char*)re->name)
+		throw std::runtime_error("Invalid fsoverlay config");
+	for(auto c = re->children; c; c = c->next) {
+		if(c->type != XML_ELEMENT_NODE)
+			continue;
+		if(N_PLUGIN != (const char*)c->name)
+			continue;
+		// get the 'name' attribute
+		const xc	nm(xmlGetProp(c, (const xmlChar*)A_NAME.c_str()));
+		if(!nm)
+			throw std::runtime_error("Invalid fsoverlay 'plugin' entry");
+		p_data		cur_p;
+		cur_p.p_name = nm.c_str();
+		// get all entries
+		for(auto ec = c->children; ec; ec = ec->next) {
+			if(ec->type != XML_ELEMENT_NODE)
+				continue;
+			if(N_ENTRY != (const char*)ec->name)
+				continue;
+			const xc	fspath(xmlGetProp(ec, (const xmlChar*)A_FSPATH.c_str())),
+					datapath(xmlGetProp(ec, (const xmlChar*)A_DPATH.c_str()));
+			if(!fspath)
+				throw std::runtime_error("Invalid fsoverlay 'entry' - no 'fspath' attribute");
+			if(!datapath)
+				throw std::runtime_error("Invalid fsoverlay 'entry' - no 'datapath' attribute");
+			cur_p.files.push_back({fspath.c_str(), datapath.c_str()});
+		}
+		PLUGINS_LIST.emplace_back(cur_p);
+	}
 }
 
 void fso::update_xml(const std::string& f) {
+	std::unique_ptr<xmlDoc, void (*)(xmlDocPtr)>			dp(0, xmlFreeDoc);
+	xmlDocPtr							doc = 0;
+	std::unique_ptr<xmlTextWriter, void (*)(xmlTextWriterPtr)>	w(xmlNewTextWriterDoc(&doc, 0), xmlFreeTextWriter);
+	if(!w)
+		throw std::runtime_error("Can't initialize xml writer");
+	dp.reset(doc);
+	if(!xmlTextWriterStartDocument(w.get(), NULL, ISO_ENCODING, NULL))
+		throw std::runtime_error("Can't udpate xml fsconfig: xmlTextWriterStartDocument");
+	// start with root element
+	// it's the first one!
+	{
+		xel_w	root(w.get(), N_ROOT_CFG);
+		for(const auto& p : PLUGINS_LIST) {
+			xel_w	plugin(w.get(), N_PLUGIN);
+			plugin.add_attr_txt(A_NAME, p.p_name);
+			for(const auto& e : p.files) {
+				xel_w	entry(w.get(), N_ENTRY);
+				entry.add_attr_txt(A_FSPATH, e.r_file);
+				entry.add_attr_txt(A_DPATH, e.sym_file);
+			}
+		}
+	}
 }
 
