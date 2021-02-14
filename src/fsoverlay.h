@@ -21,6 +21,9 @@
 #include <string>
 
 namespace fso {
+	// static functions to manage the XML
+	// config overlays
+	extern void load_xml(const std::string& f);
 	extern void update_xml(const std::string& f);
 }
 

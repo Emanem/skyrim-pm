@@ -22,8 +22,38 @@
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <libxml/parser.h>
 
 namespace utils {
+	// utlity class to manage RAII for
+	// memory allocated objects from
+	// libxml2
+	class XmlCharHolder {
+		xmlChar* p_;
+public:
+		XmlCharHolder(xmlChar* p) : p_(p) {
+		}
+
+		XmlCharHolder(const XmlCharHolder&) = delete;
+		XmlCharHolder& operator=(const XmlCharHolder&) = delete;
+
+		operator bool() const {
+			return p_ != 0;
+		}
+
+		operator const char*() const {
+			return (const char*)p_;
+		}
+
+		const char* c_str(void) const {
+			return (const char*)p_;
+		}
+
+		~XmlCharHolder() {
+			xmlFree(p_);
+		}
+	};
+
 	enum prompt_choice_mode {
 		ONE_ONLY = 1,
 		ONE_OR_NONE,

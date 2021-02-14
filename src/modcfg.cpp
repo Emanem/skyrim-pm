@@ -21,34 +21,7 @@
 #include <sstream>
 
 namespace {
-	// utlity class to manage RAII for
-	// memory allocated objects from
-	// libxml2
-	class xc {
-		xmlChar* p_;
-public:
-		xc(xmlChar* p) : p_(p) {
-		}
-
-		xc(const xc&) = delete;
-		xc& operator=(const xc&) = delete;
-
-		operator bool() const {
-			return p_ != 0;
-		}
-
-		operator const char*() const {
-			return (const char*)p_;
-		}
-
-		const char* c_str(void) const {
-			return (const char*)p_;
-		}
-
-		~xc() {
-			xmlFree(p_);
-		}
-	};
+	typedef utils::XmlCharHolder xc;
 }
 
 void modcfg::parser::print_element_names(std::ostream& ostr, xmlNode * a_node, const int level) {

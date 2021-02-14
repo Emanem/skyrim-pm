@@ -35,6 +35,9 @@ namespace {
 	typedef std::deque<p_data>	p_list;
 }
 
+void fso::load_xml(const std::string& f) {
+}
+
 void fso::update_xml(const std::string& f) {
 }
 
