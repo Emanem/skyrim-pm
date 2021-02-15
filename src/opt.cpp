@@ -103,7 +103,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 
 		case 'p': {
 			opt::skyrim_se_plugins = optarg;
-		}
+		} break;
 
 		case '?':
 		break;
