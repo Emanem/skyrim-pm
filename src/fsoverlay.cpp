@@ -151,6 +151,13 @@ void fso::load_xml(const std::string& f) {
 	}
 }
 
+void fso::list_plugin(std::ostream& ostr) {
+	ostr << "\t" << utils::term::blue("Overrides/Plugins:") << "\n";
+	for(const auto& i : PLUGINS_LIST) {
+		ostr << i.p_name << std::endl;
+	}
+}
+
 bool fso::check_plugin(const std::string& p_name) {
 	for(const auto& i : PLUGINS_LIST) {
 		if(i.p_name == p_name)

@@ -86,6 +86,13 @@ int main(int argc, char *argv[]) {
 			// setup the plugins
 			fso::load_xml(FSO_XML_PATH);
 		}
+		// in case we're listing overrides, do it an exit
+		if(opt::override_list) {
+			if(opt::override_data.empty())
+				throw std::runtime_error("'override' directory not provided, can't list as such");
+			fso::list_plugin(std::cout);
+			return 0;
+		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
 			// in case we have override data

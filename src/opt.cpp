@@ -24,7 +24,8 @@ bool		opt::use_term_style = true,
 		opt::log_enabled = false,
 		opt::data_extract = false,
 		opt::auto_plugins = false,
-		opt::xml_debug = false;
+		opt::xml_debug = false,
+		opt::override_list = false;
 std::string	opt::skyrim_se_data,
 		opt::skyrim_se_plugins,
 		opt::override_data;
@@ -33,6 +34,7 @@ namespace {
 	// settings/options management
 	void print_help(const char *prog, const char *version) {
 		std::cerr <<	"Usage: " << prog << " [options] <mod1.7z> <mod2.rar> <mod3...>\nExecutes skyrim-pm " << version << "\n\n"
+			  <<	"Basic options (files will be overwritten in Data directory)\n\n"
 			  <<	"-s,--sse-data d Use specified Skyrim SE Data directory (d). If not set, skyrim-pm\n"
 			  <<    "                will try to invoke 'locate' to find it and use the first entry\n"
 			  <<	"-x,--data-ext   Try to extract the archive no matter what even when ModuleConfig.xml\n"
@@ -44,12 +46,17 @@ namespace {
 			  <<	"                file would be located under:\n"
 			  <<	"                <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>\n"
 			  <<	"--auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option\n"
-			  <<	"                -p (or --plugins) got set to same file name (default disabled)\n"
+			  <<	"                -p (or --plugins) got set to same file name (default disabled)\n\n"
+			  <<	"Override options (files will be saved in override directory and only symlinks will be\n"
+			  <<	"written in Data directory - furthermore the file Data/skyrim-pm-fso.xml will be used\n"
+			  <<	"to control such overrides over time)\n\n"
 			  <<	"-o,--override d Do not write files into Skyrim SE 'Data' directory but in direcotyr 'd'\n"
 			  <<	"                skyrim-pm will instead write symlinks under 'Data' directories and will\n"
 			  <<	"                write a new 'xml' file under 'Data' directory to manage such symlinks.\n"
 			  <<	"                If an existing file is present under 'Data' it will be overwritten by\n"
 			  <<	"                the symlinks and won't be recoverable.\n"
+			  <<	"-l,--list-ovd   Lists all overrides/installed plugins\n\n"
+			  <<	"Debug options\n\n"
 			  <<	"--log           Print log on std::cerr (default not set)\n"
 			  <<	"--xml-debug     Print xml debug info for ModuleConfig.xml\n"
 			  <<	"--no-colors     Do not display terminal colors/styles\n"
@@ -66,6 +73,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		{"plugins",		required_argument, 0,	'p'},
 		{"auto-plugins",	no_argument,	   0,	0},
 		{"override",		required_argument, 0,	'o'},
+		{"list-ovd",		no_argument,	   0,	'l'},
 		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{"xml-debug",		no_argument,	   0,	0},
@@ -76,7 +84,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		// getopt_long stores the option index here
 		int		option_index = 0;
 
-		if(-1 == (c = getopt_long(argc, argv, "hs:xp:o:", long_options, &option_index)))
+		if(-1 == (c = getopt_long(argc, argv, "hs:xp:o:l", long_options, &option_index)))
 			break;
 
 		switch (c) {
@@ -110,11 +118,15 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 
 		case 'p': {
 			opt::skyrim_se_plugins = optarg;
-		}
+		} break;
 
 		case 'o': {
 			opt::override_data = optarg;
-		}
+		} break;
+
+		case 'l': {
+			opt::override_list = true;
+		} break;
 
 		case '?':
 		break;

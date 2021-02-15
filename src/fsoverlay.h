@@ -19,11 +19,13 @@
 #define _FSOVERLAY_H_
 
 #include <string>
+#include <ostream>
 
 namespace fso {
 	// static functions to manage the XML
 	// config overlays
 	extern void load_xml(const std::string& f);
+	extern void list_plugin(std::ostream& ostr);
 	extern bool check_plugin(const std::string& p_name);
 	extern void scan_plugin(const std::string& p_name, const std::string& pbase, const std::string& data_dir);
 	extern void update_xml(const std::string& f);
