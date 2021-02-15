@@ -189,6 +189,9 @@ void fso::list_replace(std::ostream& ostr) {
 	}
 }
 
+void fso::list_verify(std::ostream& ostr) {
+	ostr << "\t" << utils::term::blue("Overrides/Plugins verification:") << "\n";
+}
 
 bool fso::check_plugin(const std::string& p_name) {
 	for(const auto& i : PLUGINS_LIST) {

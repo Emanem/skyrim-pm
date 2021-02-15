@@ -42,15 +42,18 @@ Override options (files will be saved in override directory and only symlinks wi
 written in Data directory - furthermore the file Data/skyrim-pm-fso.xml will be used
 to control such overrides over time)
 
--o,--override d Do not write files into Skyrim SE 'Data' directory but in direcotyr 'd'
+-o,--override d Do not write files into Skyrim SE 'Data' directory but in directory 'd'
                 skyrim-pm will instead write symlinks under 'Data' directories and will
                 write a new 'xml' file under 'Data' directory to manage such symlinks.
                 If an existing file is present under 'Data' it will be overwritten by
-                the symlinks and won't be recoverable.
+                the symlinks and won't be recoverable
 -l,--list-ovd   Lists all overrides/installed plugins
 --list-replace  Lists all the overridden files which have been replaced by successive
                 plugins (i.e. when plugins/mods potentially have conflicted during setup
                 process)
+--list-verify   Checks all the symlinks in the override config file are still present
+                under Data and also that all the files in such config are still available
+                on the filesystem
 
 Misc/Debug options
 

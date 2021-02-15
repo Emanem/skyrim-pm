@@ -26,7 +26,8 @@ bool		opt::use_term_style = true,
 		opt::auto_plugins = false,
 		opt::xml_debug = false,
 		opt::override_list = false,
-		opt::override_list_replace = false;
+		opt::override_list_replace = false,
+		opt::override_list_verify = false;
 std::string	opt::skyrim_se_data,
 		opt::skyrim_se_plugins,
 		opt::override_data;
@@ -51,15 +52,18 @@ namespace {
 			  <<	"\nOverride options (files will be saved in override directory and only symlinks will be\n"
 			  <<	"written in Data directory - furthermore the file Data/skyrim-pm-fso.xml will be used\n"
 			  <<	"to control such overrides over time)\n\n"
-			  <<	"-o,--override d Do not write files into Skyrim SE 'Data' directory but in direcotyr 'd'\n"
+			  <<	"-o,--override d Do not write files into Skyrim SE 'Data' directory but in directory 'd'\n"
 			  <<	"                skyrim-pm will instead write symlinks under 'Data' directories and will\n"
 			  <<	"                write a new 'xml' file under 'Data' directory to manage such symlinks.\n"
 			  <<	"                If an existing file is present under 'Data' it will be overwritten by\n"
-			  <<	"                the symlinks and won't be recoverable.\n"
+			  <<	"                the symlinks and won't be recoverable\n"
 			  <<	"-l,--list-ovd   Lists all overrides/installed plugins\n"
 			  <<	"--list-replace  Lists all the overridden files which have been replaced by successive\n"
 			  <<	"                plugins (i.e. when plugins/mods potentially have conflicted during setup\n"
 			  <<	"                process)\n"
+			  <<	"--list-verify   Checks all the symlinks in the override config file are still present\n"
+			  <<	"                under Data and also that all the files in such config are still available\n"
+			  <<	"                on the filesystem\n"
 			  <<	"\nMisc/Debug options\n\n"
 			  <<	"-h,--help       Print this text and exits\n"
 			  <<	"--log           Print log on std::cerr (default not set)\n"
@@ -80,6 +84,7 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 		{"override",		required_argument, 0,	'o'},
 		{"list-ovd",		no_argument,	   0,	'l'},
 		{"list-replace",	no_argument,	   0,	0},
+		{"list-verify",		no_argument,	   0,	0},
 		{"log",			no_argument,	   0,	0},
 		{"no-colors",		no_argument,	   0,	0},
 		{"xml-debug",		no_argument,	   0,	0},
@@ -108,6 +113,8 @@ int opt::parse_args(int argc, char *argv[], const char *prog, const char *versio
 				opt::auto_plugins = true;
 			} else if(!std::strcmp("list-replace", long_options[option_index].name)) {
 				opt::override_list_replace = true;
+			} else if(!std::strcmp("list-verify", long_options[option_index].name)) {
+				opt::override_list_verify = true;
 			}
 		} break;
 
