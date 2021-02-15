@@ -28,6 +28,7 @@
 #include <memory>
 #include <cstring>
 #include <fstream>
+#include <unordered_set>
 
 #define ISO_ENCODING "ISO-8859-1"
 
@@ -157,6 +158,37 @@ void fso::list_plugin(std::ostream& ostr) {
 		ostr << i.p_name << std::endl;
 	}
 }
+
+void fso::list_replace(std::ostream& ostr) {
+	ostr << "\t" << utils::term::blue("Overrides/Plugins replaced files:") << "\n";
+	std::unordered_set<std::string>	processed_sym;
+
+	// this is full linear scan, very unpotimized
+	for(auto i = PLUGINS_LIST.rbegin(); i != PLUGINS_LIST.rend(); ++i) {
+		for(const auto& s : i->files) {
+			if(processed_sym.find(s.sym_file) != processed_sym.end())
+				continue;
+			// now, search the plugin list in reverse order to find out
+			// if we have any other conflict/replacement
+			std::vector<std::string>	r_files;
+			for(auto j = i+1; j != PLUGINS_LIST.rend(); ++j) {
+				for(const auto& sr : j->files) {
+					if(sr.sym_file == s.sym_file)
+						r_files.emplace_back(sr.r_file);
+				}
+			}
+			// if we have some replacement, then print
+			if(!r_files.empty()) {
+				ostr << utils::term::bold(s.sym_file) << '\n';
+				ostr << '\t' << utils::term::green(s.r_file) << '\n';
+				for(const auto& rf : r_files)
+					ostr << '\t' << utils::term::yellow(rf) << '\n';
+			}
+			processed_sym.insert(s.sym_file);
+		}
+	}
+}
+
 
 bool fso::check_plugin(const std::string& p_name) {
 	for(const auto& i : PLUGINS_LIST) {

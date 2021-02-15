@@ -93,6 +93,12 @@ int main(int argc, char *argv[]) {
 			fso::list_plugin(std::cout);
 			return 0;
 		}
+		if(opt::override_list_replace) {
+			if(opt::override_data.empty())
+				throw std::runtime_error("'override' directory not provided, can't list as such");
+			fso::list_replace(std::cout);
+			return 0;
+		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
 			// in case we have override data

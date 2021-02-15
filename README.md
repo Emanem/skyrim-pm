@@ -3,7 +3,9 @@ Simple *Skyrim SE* plugin manager for linux; this is to make it easy to extract 
 
 ## Status
 
-Currently does basic unpacking of compressed mods and should install and manage dynamic choices within each archive. Does not support inter-packages/mods references. If not specifying option `-s` (or `--sse-data`) it will try to lookup the Skyrim SE `Data` directory (otherwise in case of failure will output files/directories into `./Data` hence in such cases you want to run _skyrim-pm_ from wihtin `Skyrim Special Edition` directory).
+Currently does basic unpacking of compressed mods and should install and manage dynamic choices within each archive. Does support inter-packages/mods references when specifying the `-o` (or `--override`) option.
+
+If not specifying option `-s` (or `--sse-data`) it will try to lookup the Skyrim SE `Data` directory (otherwise in case of failure will output files/directories into `./Data` hence in such cases you want to run _skyrim-pm_ from wihtin `Skyrim Special Edition` directory).
 
 If you have an archive without _ModuleConfig.xml_ you can try running it with `-x` (`--data-ext`) option to try install the files based on their names: _*.esp/bsa/ini_ will go into the specified _Data_ directory,whilst files under _meshes_, _textures_, _sound_ and _interface_ will be copied with their own relative paths under respective subdirectories.
 
@@ -19,7 +21,9 @@ Download the sources, then get _libxml2_ and _libarchive_, dev version (i.e. `su
 ## How to run
 ```
 Usage: ./skyrim-pm [options] <mod1.7z> <mod2.rar> <mod3...>
-Executes skyrim-pm 0.1.3
+Executes skyrim-pm 0.2.0
+
+Basic options (files will be overwritten in Data directory)
 
 -s,--sse-data d Use specified Skyrim SE Data directory (d). If not set, skyrim-pm
                 will try to invoke 'locate' to find it and use the first entry
@@ -33,6 +37,24 @@ Executes skyrim-pm 0.1.3
                 <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>
 --auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option
                 -p (or --plugins) got set to same file name (default disabled)
+
+Override options (files will be saved in override directory and only symlinks will be
+written in Data directory - furthermore the file Data/skyrim-pm-fso.xml will be used
+to control such overrides over time)
+
+-o,--override d Do not write files into Skyrim SE 'Data' directory but in direcotyr 'd'
+                skyrim-pm will instead write symlinks under 'Data' directories and will
+                write a new 'xml' file under 'Data' directory to manage such symlinks.
+                If an existing file is present under 'Data' it will be overwritten by
+                the symlinks and won't be recoverable.
+-l,--list-ovd   Lists all overrides/installed plugins
+--list-replace  Lists all the overridden files which have been replaced by successive
+                plugins (i.e. when plugins/mods potentially have conflicted during setup
+                process)
+
+Misc/Debug options
+
+-h,--help       Print this text and exits
 --log           Print log on std::cerr (default not set)
 --xml-debug     Print xml debug info for ModuleConfig.xml
 --no-colors     Do not display terminal colors/styles
@@ -48,6 +70,10 @@ This will optmistically try to install everything automatically. Setting the `--
 If instead you want to _preview_ actions, then one could redirect both _Data_ and _Plugins.txt_ to loca directory/file, adding options `-s ./Data` and `-p plugin.txt`, thus
 ```
 ./skyrim-pm -s ./Data -p plugins.txt -x <mod1.7z> <mod2.zip> ...
+```
+If you then prefer to use _overrides_ and manage the files vis symlinks (to be able to _undo_ some plugins/mods installations) then use the `-o` option.
+```
+./skyrim-pm -o /real_data/path -s ./Data -p plugins.txt -x <mod1.7z> <mod2.zip> ...
 ```
 
 ## F.A.Q.

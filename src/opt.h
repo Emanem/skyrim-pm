@@ -26,7 +26,8 @@ namespace opt {
 				data_extract,
 				auto_plugins,
 				xml_debug,
-				override_list;
+				override_list,
+				override_list_replace;
 	extern std::string	skyrim_se_data,
 				skyrim_se_plugins,
 				override_data;
