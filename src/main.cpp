@@ -107,18 +107,20 @@ int main(int argc, char *argv[]) {
 		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
+			const auto	plugin_name = utils::file_name(argv[i]);
 			// in case we're in remove mode, try to do it
 			if(opt::override_list_remove) {
-				LOG << "Trying to remove '" << utils::file_name(argv[i]) << "'";
+				LOG << "Trying to remove '" << plugin_name << "'";
 				if(opt::override_data.empty())
 					throw std::runtime_error("Can't run in remove mode without override specified");
+				fso::list_remove(std::cout, plugin_name, opt::skyrim_se_data);
 				continue;
 			}
 			// in case we have override data
 			// check plugin is not already setup
-			if(!opt::override_data.empty() && fso::check_plugin(utils::file_name(argv[i]))) {
+			if(!opt::override_data.empty() && fso::check_plugin(plugin_name)) {
 				std::stringstream	sstr;
-				sstr	<< "Warning: plugin '" << utils::file_name(argv[i]) << "' already exists "
+				sstr	<< "Warning: plugin '" << plugin_name << "' already exists "
 					<< "in list of managed plugins, skipping it";
 				std::cout << utils::term::yellow(sstr.str()) << std::endl;
 				continue;
@@ -128,7 +130,7 @@ int main(int argc, char *argv[]) {
 			arc::file_names		esp_files;
 			// get and load the ModuleConfig.xml file
 			std::stringstream	sstr;
-			const std::string	ovd = (opt::override_data.empty()) ? "" : opt::override_data + utils::file_name(argv[i]) + '/';
+			const std::string	ovd = (opt::override_data.empty()) ? "" : opt::override_data + plugin_name + '/';
 			if(!a.extract_modcfg(sstr)) {
 				if(opt::data_extract) {
 					std::stringstream	msg;
@@ -151,7 +153,7 @@ int main(int argc, char *argv[]) {
 			}
 			// add to fso in case
 			if(!ovd.empty()) {
-				fso::scan_plugin(utils::file_name(argv[i]), ovd, opt::skyrim_se_data);
+				fso::scan_plugin(plugin_name, ovd, opt::skyrim_se_data);
 			}
 		}
 		// in case we have overrides, update xml

@@ -29,6 +29,7 @@
 #include <cstring>
 #include <fstream>
 #include <unordered_set>
+#include <algorithm>
 
 #define ISO_ENCODING "ISO-8859-1"
 
@@ -224,6 +225,51 @@ void fso::list_verify(std::ostream& ostr, const std::string& data_dir) {
 		}
 	}
 
+}
+
+void fso::list_remove(std::ostream& ostr, const std::string& p_name, const std::string& data_dir) {
+	for(auto i = PLUGINS_LIST.rbegin(); i != PLUGINS_LIST.rend(); ++i) {
+		if(i->p_name != p_name)
+			continue;
+		// now, for all entries, pick the symlink
+		// and for each one of those try to find first fallback
+		for(const auto& s : i->files) {
+			const auto&	cur_sym = s.sym_file;
+			std::string	prev_file;
+			for(auto j = i+1; j != PLUGINS_LIST.rend(); ++j) {
+				for(const auto& fj : j->files) {
+					if(fj.sym_file == cur_sym) {
+						prev_file = fj.r_file;
+						break;
+					}
+				}
+				// means we found something
+				if(!prev_file.empty())
+					break;
+			}
+			// if we got a prev_file then setup the new symlink
+			// and delete the original file
+			const auto	sym_path = data_dir + cur_sym;
+			if(!prev_file.empty()) {
+				remove(sym_path.c_str());
+				if(symlink(prev_file.c_str(), sym_path.c_str()))
+					throw std::runtime_error(std::string("overlay symlink failed for '") + prev_file + "' --> '" + sym_path + "'");
+				LOG << "Overlay old symlink '" << sym_path << "' from '" << prev_file << "'";
+			} else {
+				remove(sym_path.c_str());
+				LOG << "symlink '" << sym_path << "' removed";
+			}
+			// no matter what, remove the real file
+			remove(s.r_file.c_str());
+			LOG << "file '" << s.r_file << "' removed";
+		}
+		ostr << utils::term::blue(p_name + " removed") << '\n';
+		// remove the iterator from the PLUGINS_LIST variable
+		auto	rmit = std::remove_if(PLUGINS_LIST.begin(), PLUGINS_LIST.end(), [&p_name](const p_data& v) -> bool { return v.p_name == p_name; });
+		PLUGINS_LIST.erase(rmit, PLUGINS_LIST.end());
+		return;
+	}
+	ostr << utils::term::yellow(p_name + " not removed, could not be found") << '\n';
 }
 
 bool fso::check_plugin(const std::string& p_name) {

@@ -28,6 +28,7 @@ namespace fso {
 	extern void list_plugin(std::ostream& ostr);
 	extern void list_replace(std::ostream& ostr);
 	extern void list_verify(std::ostream& ostr, const std::string& data_dir);
+	extern void list_remove(std::ostream& ostr, const std::string& p_name, const std::string& data_dir);
 	extern bool check_plugin(const std::string& p_name);
 	extern void scan_plugin(const std::string& p_name, const std::string& pbase, const std::string& data_dir);
 	extern void update_xml(const std::string& f);
