@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 		if(opt::override_list_verify) {
 			if(opt::override_data.empty())
 				throw std::runtime_error("'override' directory not provided, can't list as such");
-			fso::list_verify(std::cout);
+			fso::list_verify(std::cout, opt::skyrim_se_data);
 			return 0;
 		}
 		// for all the mod files...

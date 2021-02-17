@@ -189,8 +189,41 @@ void fso::list_replace(std::ostream& ostr) {
 	}
 }
 
-void fso::list_verify(std::ostream& ostr) {
-	ostr << "\t" << utils::term::blue("Overrides/Plugins verification:") << "\n";
+void fso::list_verify(std::ostream& ostr, const std::string& data_dir) {
+	ostr << "\t" << utils::term::blue("Overrides/Plugins verification (missing files/invalid symlinks):") << "\n";
+	std::unordered_set<std::string>	processed_sym;
+
+	for(auto i = PLUGINS_LIST.rbegin(); i != PLUGINS_LIST.rend(); ++i) {
+		std::vector<std::string>	r_files_missing,
+						sym_missing;
+		for(const auto& s : i->files) {
+			const bool	check_symlink = (processed_sym.find(s.sym_file) == processed_sym.end());
+			// check the real file first
+			std::ifstream	rf_s(s.r_file, std::ios_base::binary);
+			if(!rf_s) {
+				r_files_missing.emplace_back(s.r_file);
+			}
+			if(check_symlink) {
+				char			r_file[1024];
+				ssize_t			r_sz = -1;
+				if((r_sz = readlink((data_dir + s.sym_file).c_str(), r_file, sizeof(r_file)-1)) != -1)
+					r_file[r_sz] = '\0';
+				if(r_sz == -1 || s.r_file != r_file)
+					sym_missing.emplace_back(s.sym_file);
+			}
+			processed_sym.insert(s.sym_file);
+		}
+		if((r_files_missing.size() + sym_missing.size()) > 0) {
+			ostr << utils::term::bold(i->p_name) << '\n';
+			for(const auto& f: r_files_missing) {
+				ostr << '\t' << "File\t" << utils::term::red(f) << '\n';
+			}
+			for(const auto& f: sym_missing) {
+				ostr << '\t' << "Sym\t" << utils::term::red(f) << '\n';
+			}
+		}
+	}
+
 }
 
 bool fso::check_plugin(const std::string& p_name) {
