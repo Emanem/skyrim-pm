@@ -107,6 +107,13 @@ int main(int argc, char *argv[]) {
 		}
 		// for all the mod files...
 		for(int i = mod_idx; i < argc; ++i) {
+			// in case we're in remove mode, try to do it
+			if(opt::override_list_remove) {
+				LOG << "Trying to remove '" << utils::file_name(argv[i]) << "'";
+				if(opt::override_data.empty())
+					throw std::runtime_error("Can't run in remove mode without override specified");
+				continue;
+			}
 			// in case we have override data
 			// check plugin is not already setup
 			if(!opt::override_data.empty() && fso::check_plugin(utils::file_name(argv[i]))) {

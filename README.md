@@ -25,42 +25,44 @@ Executes skyrim-pm 0.2.0
 
 Basic options (files will be overwritten in Data directory)
 
--s,--sse-data d Use specified Skyrim SE Data directory (d). If not set, skyrim-pm
-                will try to invoke 'locate' to find it and use the first entry
--x,--data-ext   Try to extract the archive no matter what even when ModuleConfig.xml
-                can't be found. In this case all files which match a given criteria
-                will be extracted and saved under the specified Data directory
--p,--plugins f  Use specified file (f) as 'Plugins.txt' file; this parameter will
-                imply automatically modifying such file to enabling ESP files without
-                having to modify and use the 'load order' in-game menu; usually this
-                file would be located under:
-                <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>
---auto-plugins  Automatically find 'Plugins.txt' file and if found behaves as if option
-                -p (or --plugins) got set to same file name (default disabled)
+-s,--sse-data d   Use specified Skyrim SE Data directory (d). If not set, skyrim-pm
+                  will try to invoke 'locate' to find it and use the first entry
+-x,--data-ext     Try to extract the archive no matter what even when ModuleConfig.xml
+                  can't be found. In this case all files which match a given criteria
+                  will be extracted and saved under the specified Data directory
+-p,--plugins f    Use specified file (f) as 'Plugins.txt' file; this parameter will
+                  imply automatically modifying such file to enabling ESP files without
+                  having to modify and use the 'load order' in-game menu; usually this
+                  file would be located under:
+                  <Local Settings/Application Data/Skyrim Special Edition/Plugins.txt>
+--auto-plugins    Automatically find 'Plugins.txt' file and if found behaves as if option
+                  -p (or --plugins) got set to same file name (default disabled)
 
 Override options (files will be saved in override directory and only symlinks will be
-written in Data directory - furthermore the file Data/skyrim-pm-fso.xml will be used
-to control such overrides over time)
+written in Data   directory - furthermore the file Data/skyrim-pm-fso.xml will be used
+to control such   overrides over time)
 
--o,--override d Do not write files into Skyrim SE 'Data' directory but in directory 'd'
-                skyrim-pm will instead write symlinks under 'Data' directories and will
-                write a new 'xml' file under 'Data' directory to manage such symlinks.
-                If an existing file is present under 'Data' it will be overwritten by
-                the symlinks and won't be recoverable
--l,--list-ovd   Lists all overrides/installed plugins
---list-replace  Lists all the overridden files which have been replaced by successive
-                plugins (i.e. when plugins/mods potentially have conflicted during setup
-                process)
---list-verify   Checks all the symlinks in the override config file are still present
-                under Data and also that all the files in such config are still available
-                on the filesystem
+-o,--override d   Do not write files into Skyrim SE 'Data' directory but in directory 'd'
+                  skyrim-pm will instead write symlinks under 'Data' directories and will
+                  write a new 'xml' file under 'Data' directory to manage such symlinks.
+                  If an existing file is present under 'Data' it will be overwritten by
+                  the symlinks and won't be recoverable
+-l,--list-ovd     Lists all overrides/installed plugins
+--list-replace    Lists all the overridden files which have been replaced by successive
+                  plugins (i.e. when plugins/mods potentially have conflicted during setup
+                  process)
+--list-verify     Checks all the symlinks in the override config file are still present
+                  under Data and also that all the files in such config are still available
+                  on the filesystem
+-r,--list-remove  Try to remove the listed plugins, restoring the previous overridden symlinks
+                  when applicable
 
 Misc/Debug options
 
--h,--help       Print this text and exits
---log           Print log on std::cerr (default not set)
---xml-debug     Print xml debug info for ModuleConfig.xml
---no-colors     Do not display terminal colors/styles
+-h,--help         Print this text and exits
+--log             Print log on std::cerr (default not set)
+--xml-debug       Print xml debug info for ModuleConfig.xml
+--no-colors       Do not display terminal colors/styles
 ```
 
 ### Run examples
