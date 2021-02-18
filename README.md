@@ -68,7 +68,7 @@ Misc/Debug options
 ### Run examples
 Some run examples, without and with _override_.
 
-#### Basic (Without overrides)
+#### Basic (without overrides)
 If you're feeling somehow optimistic, you can run
 ```
 ./skyrim-pm -x --auto-plugins <mod1.7z> <mod2.zip> ...
