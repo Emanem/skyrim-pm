@@ -22,6 +22,8 @@
 #include <sstream>
 #include <chrono>
 #include <memory>
+#include <cstdio>
+#include <unistd.h>
 #include "opt.h"
 
 /*
@@ -229,8 +231,10 @@ std::string utils::get_skyrim_se_plugins(void) {
 
 
 void utils::term::enable(void) {
-	// should check we can do this
-	term_enabled = true;
+	// only enable colors if the output
+	// is a terminal
+	if(isatty(fileno(stdout)) && isatty(fileno(stderr)))
+		term_enabled = true;
 }
 
 std::string utils::term::red(const std::string& in) {
