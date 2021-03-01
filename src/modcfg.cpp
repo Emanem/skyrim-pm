@@ -21,34 +21,7 @@
 #include <sstream>
 
 namespace {
-	// utlity class to manage RAII for
-	// memory allocated objects from
-	// libxml2
-	class xc {
-		xmlChar* p_;
-public:
-		xc(xmlChar* p) : p_(p) {
-		}
-
-		xc(const xc&) = delete;
-		xc& operator=(const xc&) = delete;
-
-		operator bool() const {
-			return p_ != 0;
-		}
-
-		operator const char*() const {
-			return (const char*)p_;
-		}
-
-		const char* c_str(void) const {
-			return (const char*)p_;
-		}
-
-		~xc() {
-			xmlFree(p_);
-		}
-	};
+	typedef utils::XmlCharHolder xc;
 }
 
 void modcfg::parser::print_element_names(std::ostream& ostr, xmlNode * a_node, const int level) {
@@ -111,7 +84,8 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 				dst += '/';
 			}
 			// now invoke the dir extraction/copy
-			a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst), ei.esp_files);
+			const std::string	ovd = ei.override_dir.empty() ? "" : (ei.override_dir + (dst.empty() ? "" : dst));
+			a.extract_dir(src, ei.skyrim_data_dir + (dst.empty() ? "" : dst), ovd, ei.esp_files);
 		} else if(std::string("file") == (const char*)cur_node->name) {
 			const xc		x_src(xmlGetProp(cur_node, (const xmlChar*)"source")),
 						x_dst(xmlGetProp(cur_node, (const xmlChar*)"destination"));
@@ -122,18 +96,21 @@ void modcfg::parser::copy_op_node(xmlNode* node, arc::file& a, const execute_inf
 			// in case dst is non empty is supposed to be a fully qualified
 			// file name, relative to 'Data' - skyrim_data_dir already
 			// conatains '/' at the end
-			std::string		tgt_filename = ei.skyrim_data_dir;
+			std::string		tgt_filename = ei.skyrim_data_dir,
+						ovd_filename = ei.override_dir;
 			// if dst is non empty, we should simply append to tgt_filename
 			// otherwise we'll have to find the filename
 			// and concatenate
 			if(!dst.empty()) {
 				tgt_filename += dst;
+				if(!ovd_filename.empty()) ovd_filename += dst;
 			} else {
 				const auto	p_slash = src.find_last_of('/');
 				tgt_filename += src.substr((p_slash == std::string::npos) ? 0 : p_slash+1);
+				if(!ovd_filename.empty()) ovd_filename += src.substr((p_slash == std::string::npos) ? 0 : p_slash+1);
 			}
 			// now invoke the file extraction/copy
-			a.extract_file(src, tgt_filename, ei.esp_files);
+			a.extract_file(src, tgt_filename, ovd_filename, ei.esp_files);
 		}
 	}
 }

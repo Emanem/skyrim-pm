@@ -15,27 +15,24 @@
     along with skyrim-pm.  If not, see <https://www.gnu.org/licenses/>.
  * */
 
-#ifndef _OPT_H_
-#define _OPT_H_
+#ifndef _FSOVERLAY_H_
+#define _FSOVERLAY_H_
 
 #include <string>
+#include <ostream>
 
-namespace opt {
-	extern bool		use_term_style,
-				log_enabled,
-				data_extract,
-				auto_plugins,
-				xml_debug,
-				override_list,
-				override_list_replace,
-				override_list_verify,
-				override_list_remove;
-	extern std::string	skyrim_se_data,
-				skyrim_se_plugins,
-				override_data;
-
-	extern int parse_args(int argc, char *argv[], const char *prog, const char *version);
+namespace fso {
+	// static functions to manage the XML
+	// config overlays
+	extern void load_xml(const std::string& f);
+	extern void list_plugin(std::ostream& ostr);
+	extern void list_replace(std::ostream& ostr);
+	extern void list_verify(std::ostream& ostr, const std::string& data_dir);
+	extern void list_remove(std::ostream& ostr, const std::string& p_name, const std::string& data_dir);
+	extern bool check_plugin(const std::string& p_name);
+	extern void scan_plugin(const std::string& p_name, const std::string& pbase, const std::string& data_dir);
+	extern void update_xml(const std::string& f);
 }
 
-#endif //_OPT_H_
+#endif //_FSOVERLAY_H_
 
