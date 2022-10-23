@@ -226,7 +226,12 @@ std::string utils::get_skyrim_se_plugins(void) {
 	const char*	LOCATE_SKYRIM_SE_PLUGINS_CMD = "locate --regex \".*Local Settings/Application Data/Skyrim Special Edition/Plugins.txt$\" | head -1";
 	const auto	rc = exec(LOCATE_SKYRIM_SE_PLUGINS_CMD);
 	// rc may be with newline, trim it
-	return trim(rc);
+	const auto 	rv = trim(rc);
+	if(!rv.empty())
+		return rv;
+	const char*	LOCATE_SKYRIM_SE_PLUGINS_CMD_2 = "locate --regex \".*AppData/Local/Skyrim Special Edition/Plugins.txt$\" | head -1";
+	const auto	rc_2 = exec(LOCATE_SKYRIM_SE_PLUGINS_CMD_2);
+	return trim(rc_2);
 }
 
 

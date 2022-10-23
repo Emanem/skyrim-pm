@@ -37,13 +37,20 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 			r_esp_names.push_back(esp_name);
 		}
 	}
-	// get the content of the file
+	// get the content of the file and create a backup copy
 	std::vector<std::string>	existing_plugins;
 	{
 		std::ifstream	plugins_s(plugins_file);
+		const auto	cur_t = time(NULL);
+		struct tm	cur_tm = {0};
+		localtime_r(&cur_t, &cur_tm);
+		char		cur_t_str[64];
+		std::snprintf(cur_t_str, 64, "%04i%02i%02i-%02i%02i", cur_tm.tm_year, cur_tm.tm_mon, cur_tm.tm_mday, cur_tm.tm_hour, cur_tm.tm_min);
+		std::ofstream	plugins_backup(plugins_file + ".backup." + cur_t_str);
 		if(plugins_s) {
 			std::string	line;
 			while(std::getline(plugins_s, line)) {
+				plugins_backup << line << '\n';
 				if(line.empty() || (*line.begin() == '#'))
 					continue;
 				existing_plugins.push_back(line);
