@@ -45,7 +45,7 @@ void plugins::add_esp_files(const arc::file_names& esp_files, const std::string&
 		struct tm	cur_tm = {0};
 		localtime_r(&cur_t, &cur_tm);
 		char		cur_t_str[64];
-		std::snprintf(cur_t_str, 64, "%04i%02i%02i-%02i%02i", cur_tm.tm_year, cur_tm.tm_mon, cur_tm.tm_mday, cur_tm.tm_hour, cur_tm.tm_min);
+		std::snprintf(cur_t_str, 64, "%04i%02i%02i-%02i%02i", cur_tm.tm_year+1900, cur_tm.tm_mon+1, cur_tm.tm_mday, cur_tm.tm_hour, cur_tm.tm_min);
 		std::ofstream	plugins_backup(plugins_file + ".backup." + cur_t_str);
 		if(plugins_s) {
 			std::string	line;
